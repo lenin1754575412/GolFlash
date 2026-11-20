@@ -1,0 +1,55 @@
+﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, FlatList, Image, Pressable, RefreshControl, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, View } from 'react-native';
+
+// Sustituye este texto por tu token de football-data.org.
+const API_KEY = 'PON_AQUI_TU_API_KEY';
+const API_URL = 'https://api.football-data.org/v4/matches';
+const GREEN = '#58a535';
+type Team = { name?: string; shortName?: string; crest?: string };
+type Match = { id: number; utcDate?: string; status?: string; minute?: number | null; competition?: { name?: string; emblem?: string }; homeTeam?: Team; awayTeam?: Team; score?: { fullTime?: { home?: number | null; away?: number | null } } };
+const isLive = (m: Match) => ['LIVE','IN_PLAY','PAUSED','HALFTIME','EXTRA_TIME','PENALTY_SHOOTOUT'].includes(m.status || '');
+const isDone = (m: Match) => ['FINISHED','AWARDED'].includes(m.status || '');
+const peruDate = (d: Date) => new Intl.DateTimeFormat('en-CA',{timeZone:'America/Lima',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
+const apiDate = (d: Date) => d.toISOString().slice(0,10);
+const clock = (v?: string) => v ? new Date(v).toLocaleTimeString('es-PE',{timeZone:'America/Lima',hour:'2-digit',minute:'2-digit'}) : '--:--';
+function TeamLogo({uri}:{uri?:string}) { const [bad,setBad]=useState(false); return uri && !bad ? <Image source={{uri}} style={styles.logo} onError={()=>setBad(true)}/> : <View style={[styles.logo,styles.logoFallback]}><Text style={{color:'#fff'}}>âš½</Text></View>; }
+export default function Home() {
+ const [tab,setTab]=useState('HOY'); const [query,setQuery]=useState(''); const [matches,setMatches]=useState<Match[]>([]); const [loading,setLoading]=useState(false); const [error,setError]=useState(''); const [selected,setSelected]=useState<Match|null>(null); const [fav,setFav]=useState<number[]>([]); const [page,setPage]=useState('Partidos');
+ const load=useCallback(async()=>{
+  if(!API_KEY || API_KEY==='PON_AQUI_TU_API_KEY'){setError('Configura tu API Key de football-data.org en app/index.tsx para mostrar partidos reales.');setMatches([]);return;}
+  setLoading(true);setError('');
+  try {
+   // Rango UTC ampliado para incluir el dia completo de Peru y sus dias vecinos.
+   const now=new Date(); const from=new Date(now.getTime()-3*86400000); const to=new Date(now.getTime()+3*86400000);
+   const controller=new AbortController(); const timeout=setTimeout(()=>controller.abort(),15000);
+   let response:Response;
+   try { response=await fetch(`${API_URL}?dateFrom=${apiDate(from)}&dateTo=${apiDate(to)}`,{headers:{'X-Auth-Token':API_KEY},signal:controller.signal}); } finally {clearTimeout(timeout);}
+   if(!response.ok) throw new Error(response.status===403?'La API Key no tiene permiso para esta consulta.':response.status===429?'Limite de consultas alcanzado. Espera un minuto.':`La API respondio ${response.status}.`);
+   const json=await response.json(); setMatches(Array.isArray(json?.matches)?json.matches:[]);
+  } catch(e:any){setError(e?.message||'No se pudieron consultar los partidos.');setMatches([]);}finally{setLoading(false);}
+ },[]);
+ useEffect(()=>{load();const id=setInterval(load,60000);return()=>clearInterval(id)},[load]);
+ const dayOffset=tab==='AYER'?-1:tab==='MAÃ‘ANA'?1:0;
+ const target=new Date(Date.now()+dayOffset*86400000);const targetDay=peruDate(target);
+ const filtered=useMemo(()=>matches.filter(m=>{
+   const matchDay=m.utcDate?peruDate(new Date(m.utcDate)):'';
+   const statusOK=tab==='DIRECTO'?isLive(m):tab==='FINALIZADOS'?isDone(m):matchDay===targetDay;
+   const text=`${m.homeTeam?.name||''} ${m.awayTeam?.name||''} ${m.competition?.name||''}`.toLowerCase();
+   return statusOK && text.includes(query.toLowerCase());
+ }).sort((a,b)=>(a.utcDate||'').localeCompare(b.utcDate||'')),[matches,tab,query,targetDay]);
+ const groups=useMemo(()=>{const result:{league:string;games:Match[]}[]=[];for(const m of filtered){const league=m.competition?.name||'Otra competiciÃ³n';let g=result.find(x=>x.league===league);if(!g){g={league,games:[]};result.push(g)}g.games.push(m)}return result},[filtered]);
+ const toggle=(id:number)=>setFav(v=>v.includes(id)?v.filter(x=>x!==id):[...v,id]);
+ const score=(m:Match)=>{const h=m.score?.fullTime?.home,a=m.score?.fullTime?.away;return h!=null&&a!=null?`${h} - ${a}`:clock(m.utcDate)};
+ return <SafeAreaView style={styles.root}><StatusBar barStyle="light-content" backgroundColor="#202020"/>
+  <View style={styles.top}><Text style={styles.brand}>â˜°   â—‰ GOLFLASH</Text><Pressable onPress={load}><Text style={styles.topIcon}>â†»</Text></Pressable></View>
+  {selected ? <ScrollView contentContainerStyle={{padding:16}}><Pressable onPress={()=>setSelected(null)}><Text style={styles.back}>â€¹  Volver a partidos</Text></Pressable><Text style={styles.leagueTitle}>{selected.competition?.name||'Partido'}</Text><View style={styles.detailTeams}><View style={styles.detailTeam}><TeamLogo uri={selected.homeTeam?.crest}/><Text style={styles.teamName}>{selected.homeTeam?.shortName||selected.homeTeam?.name||'Local'}</Text></View><View><Text style={styles.bigScore}>{score(selected)}</Text><Text style={styles.sub}>{isLive(selected)?'â— EN VIVO':isDone(selected)?'FINALIZADO':'HORA PERÃš'}</Text></View><View style={styles.detailTeam}><TeamLogo uri={selected.awayTeam?.crest}/><Text style={styles.teamName}>{selected.awayTeam?.shortName||selected.awayTeam?.name||'Visitante'}</Text></View></View><Text style={styles.info}>Fecha: {selected.utcDate?new Date(selected.utcDate).toLocaleDateString('es-PE',{timeZone:'America/Lima'}):'No disponible'}</Text><Text style={styles.info}>Las estadÃ­sticas y alineaciones solo aparecerÃ¡n cuando la API las proporcione.</Text></ScrollView> : <>
+  <View style={styles.tabs}><ScrollView horizontal showsHorizontalScrollIndicator={false}>{['AYER','HOY','DIRECTO','MAÃ‘ANA','FINALIZADOS'].map(t=><Pressable key={t} onPress={()=>setTab(t)} style={[styles.tab,tab===t&&styles.activeTab]}><Text style={[styles.tabText,tab===t&&{color:'#fff'}]}>{t}</Text></Pressable>)}</ScrollView></View>
+  <TextInput style={styles.search} placeholder="Buscar equipo o liga" placeholderTextColor="#aaa" value={query} onChangeText={setQuery}/>
+  {loading&&matches.length===0?<ActivityIndicator color={GREEN} style={{marginTop:32}}/>:null}
+  {error?<Text style={styles.message}>{error}</Text>:null}
+  <FlatList data={groups} keyExtractor={g=>g.league} refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={GREEN}/>} contentContainerStyle={{paddingHorizontal:12,paddingBottom:95}} ListEmptyComponent={!loading&&!error?<Text style={styles.message}>No hay partidos disponibles para este filtro en las competiciones incluidas en tu API.</Text>:null} renderItem={({item:g})=><View style={styles.card}><Text style={styles.league}>âš½  {g.league.toUpperCase()}</Text>{g.games.map(m=><Pressable key={m.id} style={styles.game} onPress={()=>setSelected(m)}><View style={styles.team}><TeamLogo uri={m.homeTeam?.crest}/><Text style={styles.teamName} numberOfLines={2}>{m.homeTeam?.shortName||m.homeTeam?.name||'Local'}</Text></View><View style={styles.center}><Text style={styles.score}>{score(m)}</Text><Text style={[styles.sub,isLive(m)&&{color:'#ff6666'}]}>{isLive(m)?`â— EN VIVO ${m.minute?m.minute+"'":''}`:isDone(m)?'FINALIZADO':'HORA PERÃš'}</Text></View><View style={styles.team}><TeamLogo uri={m.awayTeam?.crest}/><Text style={styles.teamName} numberOfLines={2}>{m.awayTeam?.shortName||m.awayTeam?.name||'Visitante'}</Text></View><Pressable onPress={()=>toggle(m.id)} hitSlop={12}><Text style={{color:fav.includes(m.id)?GREEN:'#999',fontSize:23}}>{fav.includes(m.id)?'â˜…':'â˜†'}</Text></Pressable></Pressable>)}</View>}/>
+  </>}
+  <View style={styles.bottom}>{['Partidos','Favoritos','Explorar','Fichajes','Noticias'].map((p,i)=><Pressable key={p} style={styles.nav} onPress={()=>{setPage(p);setSelected(null);if(p==='Favoritos'){setQuery('');setTab('HOY')}else if(p==='Partidos'){setTab('HOY')}}}><Text style={[styles.navIcon,page===p&&{color:GREEN}]}>{['â–¦','â˜†','â—Ž','â‡„','â–¤'][i]}</Text><Text style={[styles.navText,page===p&&{color:GREEN}]}>{p}</Text></Pressable>)}</View>
+ </SafeAreaView>
+}
+const styles=StyleSheet.create({root:{flex:1,backgroundColor:'#202020'},top:{height:80,flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingHorizontal:20},brand:{fontSize:23,color:'#fff',fontWeight:'bold'},topIcon:{fontSize:30,color:'#fff'},tabs:{height:56},tab:{paddingHorizontal:17,justifyContent:'center',marginHorizontal:3},activeTab:{borderBottomWidth:3,borderBottomColor:GREEN},tabText:{fontSize:14,color:'#bdbdbd'},search:{backgroundColor:'#333',color:'#fff',borderRadius:10,margin:12,padding:15,fontSize:15},message:{color:'#bbb',backgroundColor:'#333',margin:15,padding:18,borderRadius:12,textAlign:'center',lineHeight:23},card:{backgroundColor:'#363636',borderRadius:12,marginBottom:10,overflow:'hidden'},league:{color:'#fff',fontSize:14,fontWeight:'bold',padding:14,borderBottomWidth:1,borderBottomColor:'#4b4b4b'},game:{flexDirection:'row',alignItems:'center',padding:12,minHeight:100,borderBottomWidth:1,borderBottomColor:'#444',gap:6},team:{flex:1,alignItems:'center',gap:5},logo:{width:38,height:38,resizeMode:'contain'},logoFallback:{backgroundColor:'#555',borderRadius:20,alignItems:'center',justifyContent:'center'},teamName:{fontSize:12,color:'#fff',textAlign:'center'},center:{minWidth:84,alignItems:'center'},score:{fontSize:21,color:'#eee',fontWeight:'600'},sub:{color:'#aaa',fontSize:10,textAlign:'center',marginTop:5},bottom:{height:75,flexDirection:'row',backgroundColor:'#292929',borderTopWidth:1,borderTopColor:'#444'},nav:{flex:1,alignItems:'center',justifyContent:'center'},navIcon:{fontSize:24,color:'#999'},navText:{fontSize:10,color:'#aaa',marginTop:4},back:{color:GREEN,fontSize:16,marginBottom:24},leagueTitle:{color:'#bbb',textAlign:'center',fontSize:16,marginBottom:20},detailTeams:{backgroundColor:'#363636',borderRadius:12,padding:20,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},detailTeam:{width:'30%',alignItems:'center',gap:12},bigScore:{fontSize:29,color:'#fff'},info:{color:'#ddd',backgroundColor:'#333',padding:18,borderRadius:10,marginTop:18}});
