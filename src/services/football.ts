@@ -57,6 +57,8 @@ export function fromESPN(event: any, leagueCode: string, league: string): Match 
     id: `espn:${leagueCode}:${event.id}`,
     home: String(home.team?.displayName || home.team?.name || 'Local'),
     away: String(away.team?.displayName || away.team?.name || 'Visitante'),
+    homeTeamId: home.team?.id ? String(home.team.id) : undefined,
+    awayTeamId: away.team?.id ? String(away.team.id) : undefined,
     homeLogo: home.team?.logo,
     awayLogo: away.team?.logo,
     homeScore: status === 'scheduled' ? null : number(home.score),

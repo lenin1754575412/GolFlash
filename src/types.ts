@@ -5,6 +5,8 @@ export type Match = {
   id: string;
   home: string;
   away: string;
+  homeTeamId?: string;
+  awayTeamId?: string;
   homeLogo?: string;
   awayLogo?: string;
   homeScore: number | null;

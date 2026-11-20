@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { Article, Match, Section } from './types';
 import { dayFromOffset, getMatches, LEAGUES, matchDayText, matchHour, peruKey } from './services/football';
 import { getNews } from './services/news';
+import { getTeamPlayers, type Player } from './services/players';
 
 const C = {
   bg: '#1F1F1F', surface: '#303030', card: '#303030', raised: '#393939',
@@ -74,6 +75,9 @@ export default function App() {
   const [calendar, setCalendar] = useState(false);
   const [about, setAbout] = useState(false);
   const [selected, setSelected] = useState<Match | null>(null);
+  const [teamRoster, setTeamRoster] = useState<{ name: string; players: Player[] } | null>(null);
+  const [rosterLoading, setRosterLoading] = useState(false);
+  const [rosterError, setRosterError] = useState('');
   const [matches, setMatches] = useState<Match[]>([]);
   const [favorites, setFavorites] = useState<Match[]>([]);
   const [ready, setReady] = useState(false);
@@ -93,6 +97,21 @@ export default function App() {
   const newsReq = useRef(0);
   const matchDate = direct ? dayFromOffset(0) : dayFromOffset(offset);
   const isMatchSection = section === 'Partidos' || section === 'Explorar' || section === 'Favorito';
+
+  const showPlayers = async (name: string, teamId?: string) => {
+    if (!selected || !teamId || selected.source !== 'ESPN') {
+      Alert.alert('Plantilla no disponible', 'Esta fuente no proporciona una plantilla verificable para el equipo.');
+      return;
+    }
+    setTeamRoster({ name, players: [] }); setRosterError(''); setRosterLoading(true);
+    try {
+      const players = await getTeamPlayers(selected.leagueCode, teamId);
+      setTeamRoster({ name, players });
+      if (!players.length) setRosterError('No hay jugadores publicados para este equipo.');
+    } catch { setRosterError('No se pudo consultar la plantilla. Comprueba tu conexión o inténtalo después.'); }
+    finally { setRosterLoading(false); }
+  };
+
 
   useEffect(() => {
     const listener = AppState.addEventListener('change', value => setAppActive(value === 'active'));
@@ -252,6 +271,20 @@ export default function App() {
         </Pressable>
       </View>
 
+      <Modal visible={teamRoster !== null} animationType="slide" onRequestClose={() => setTeamRoster(null)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
+          <Pressable onPress={() => setTeamRoster(null)} style={{ padding: 20, flexDirection: 'row', alignItems: 'center', gap: 12 }}><Ionicons name="arrow-back" size={25} color={C.white}/><Text style={{ color: C.white, fontSize: 20 }}>{teamRoster?.name || 'Jugadores'}</Text></Pressable>
+          {rosterLoading ? <ActivityIndicator color={C.green} size="large" /> : null}
+          {rosterError ? <Text style={{ color: C.subtle, padding: 20 }}>{rosterError}</Text> : null}
+          <ScrollView contentContainerStyle={{ padding: 16 }}>
+            {teamRoster?.players.map(player => <View key={player.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 12, borderBottomWidth: 1, borderColor: C.line }}>
+              {player.image ? <Image source={{ uri: player.image }} style={{ width: 52, height: 52, borderRadius: 26 }} /> : <Ionicons name="person-circle-outline" size={52} color={C.subtle}/>}
+              <View style={{ flex: 1 }}><Text style={{ color: C.white, fontSize: 16 }}>{player.name}</Text><Text style={{ color: C.subtle }}>{player.position}{player.number ? ` · #${player.number}` : ''}{player.age ? ` · ${player.age} años` : ''}</Text></View>
+            </View>)}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
       {selected ? (
         <ScrollView style={styles.flex} contentContainerStyle={styles.contentPadding}>
           <Pressable onPress={() => setSelected(null)} style={styles.backLine}>
@@ -266,6 +299,12 @@ export default function App() {
               <Text style={styles.detailScore}>{scoreText(selected)}</Text>
               <View style={styles.detailTeam}><Logo url={selected.awayLogo} size={56} /><Text style={styles.detailTeamText}>{selected.away}</Text></View>
             </View>
+            {selected.source === 'ESPN' ? (
+              <View style={{ flexDirection: 'row', gap: 10, marginVertical: 12 }}>
+                <Pressable onPress={() => showPlayers(selected.home, selected.homeTeamId)} style={[styles.actionButton, { flex: 1, justifyContent: 'center' }]}><Text style={styles.actionLabel}>Jugadores local</Text></Pressable>
+                <Pressable onPress={() => showPlayers(selected.away, selected.awayTeamId)} style={[styles.actionButton, { flex: 1, justifyContent: 'center' }]}><Text style={styles.actionLabel}>Jugadores visitante</Text></Pressable>
+              </View>
+            ) : null}
             <Text style={styles.dimText}>{matchDayText(selected.date)} · {matchHour(selected.date)} (Perú)</Text>
             {selected.venue ? <Text style={[styles.dimText, { marginTop: 8 }]}>{selected.venue}</Text> : null}
           </View>
