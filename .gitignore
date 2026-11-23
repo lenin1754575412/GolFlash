@@ -11,3 +11,7 @@ node_modules/
 .env.*
 *.bak
 dist/
+*.backup
+*.respaldo
+*respaldo.tsx
+*.antes-*.bak
