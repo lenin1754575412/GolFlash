@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator, Alert, AppState, Image, Linking, Modal, Pressable,
   RefreshControl, ScrollView, StyleSheet, Text, TextInput, View,
@@ -52,11 +52,11 @@ function publishedText(value?: string): string {
 }
 async function openPage(url?: string) {
   if (!url || !/^https:\/\//i.test(url)) {
-    Alert.alert('Enlace no disponible', 'Esta fuente no proporcionÃ³ un enlace vÃ¡lido.');
+    Alert.alert('Enlace no disponible', 'Esta fuente no proporcionó un enlace válido.');
     return;
   }
   try { await Linking.openURL(url); }
-  catch { Alert.alert('No se pudo abrir', 'Comprueba tu conexiÃ³n e intÃ©ntalo de nuevo.'); }
+  catch { Alert.alert('No se pudo abrir', 'Comprueba tu conexión e inténtalo de nuevo.'); }
 }
 
 function Logo({ url, size = 32 }: { url?: string; size?: number }) {
@@ -108,7 +108,7 @@ export default function App() {
       const players = await getTeamPlayers(selected.leagueCode, teamId);
       setTeamRoster({ name, players });
       if (!players.length) setRosterError('No hay jugadores publicados para este equipo.');
-    } catch { setRosterError('No se pudo consultar la plantilla. Comprueba tu conexiÃ³n o intÃ©ntalo despuÃ©s.'); }
+    } catch { setRosterError('No se pudo consultar la plantilla. Comprueba tu conexión o inténtalo después.'); }
     finally { setRosterLoading(false); }
   };
 
@@ -134,7 +134,7 @@ export default function App() {
           const parsed = JSON.parse(savedNews);
           if (Array.isArray(parsed)) setArticles(parsed.filter((x): x is Article => typeof x?.id === 'string' && typeof x?.title === 'string'));
         }
-      } catch { /* Si el almacenamiento estÃ¡ daÃ±ado, se inicia vacÃ­o. */ }
+      } catch { /* Si el almacenamiento está dañado, se inicia vacío. */ }
       finally { if (alive) setReady(true); }
     })();
     return () => { alive = false; };
@@ -180,7 +180,7 @@ export default function App() {
       if (rid !== matchReq.current) return;
       setError('No se pudo conectar con los resultados deportivos. Puedes reintentar o consultar datos guardados.');
       setCached(true);
-      setWarning('La informaciÃ³n que se muestre puede estar desactualizada.');
+      setWarning('La información que se muestre puede estar desactualizada.');
     } finally { if (rid === matchReq.current) setLoading(false); }
   }, [matchDate]);
 
@@ -195,7 +195,7 @@ export default function App() {
       AsyncStorage.setItem(NEWS_CACHE_KEY, JSON.stringify(result.articles)).catch(() => {});
     } catch {
       if (rid !== newsReq.current) return;
-      setNewsError('No se pudieron actualizar las noticias. Si ves artÃ­culos, son datos guardados.');
+      setNewsError('No se pudieron actualizar las noticias. Si ves artículos, son datos guardados.');
     } finally { if (rid === newsReq.current) setNewsLoading(false); }
   }, []);
 
@@ -237,23 +237,23 @@ export default function App() {
   function navigate(next: Section) {
     setSection(next); setDrawer(false); setSelected(null); setSearch('');
   }
-  function chooseDay(day: 'AYER' | 'HOY' | 'DIRECTO' | 'MAÃ‘ANA') {
+  function chooseDay(day: 'AYER' | 'HOY' | 'DIRECTO' | 'MAÑANA') {
     setDirect(day === 'DIRECTO');
-    if (day !== 'DIRECTO') setOffset(day === 'AYER' ? -1 : day === 'MAÃ‘ANA' ? 1 : 0);
+    if (day !== 'DIRECTO') setOffset(day === 'AYER' ? -1 : day === 'MAÑANA' ? 1 : 0);
     setDrawer(false);
   }
   function tabIsActive(day: string): boolean {
-    return day === 'DIRECTO' ? direct : !direct && offset === (day === 'AYER' ? -1 : day === 'MAÃ‘ANA' ? 1 : 0);
+    return day === 'DIRECTO' ? direct : !direct && offset === (day === 'AYER' ? -1 : day === 'MAÑANA' ? 1 : 0);
   }
 
   const articleHeader = section === 'Fichaje' ? 'Mercado de fichajes' : 'Ãšltimas noticias';
-  const visibleDay = direct ? 'DIRECTO' : offset === -1 ? 'AYER' : offset === 0 ? 'HOY' : offset === 1 ? 'MAÃ‘ANA' : matchDayText(`${matchDate}T12:00:00Z`);
+  const visibleDay = direct ? 'DIRECTO' : offset === -1 ? 'AYER' : offset === 0 ? 'HOY' : offset === 1 ? 'MAÑANA' : matchDayText(`${matchDate}T12:00:00Z`);
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <StatusBar style="light" backgroundColor={C.bg} />
       <View style={styles.header}>
-        <Pressable style={styles.headerButton} onPress={() => setDrawer(true)} accessibilityLabel="Abrir menÃº">
+        <Pressable style={styles.headerButton} onPress={() => setDrawer(true)} accessibilityLabel="Abrir menú">
           <Ionicons name="menu-outline" size={32} color={C.white} />
         </Pressable>
         <Pressable style={styles.brand} onPress={() => navigate('Partidos')}>
@@ -279,7 +279,7 @@ export default function App() {
           <ScrollView contentContainerStyle={{ padding: 16 }}>
             {teamRoster?.players.map(player => <View key={player.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 12, borderBottomWidth: 1, borderColor: C.line }}>
               {player.image ? <Image source={{ uri: player.image }} style={{ width: 52, height: 52, borderRadius: 26 }} /> : <Ionicons name="person-circle-outline" size={52} color={C.subtle}/>}
-              <View style={{ flex: 1 }}><Text style={{ color: C.white, fontSize: 16 }}>{player.name}</Text><Text style={{ color: C.subtle }}>{player.position}{player.number ? ` Â· #${player.number}` : ''}{player.age ? ` Â· ${player.age} aÃ±os` : ''}</Text></View>
+              <View style={{ flex: 1 }}><Text style={{ color: C.white, fontSize: 16 }}>{player.name}</Text><Text style={{ color: C.subtle }}>{player.position}{player.number ? ` · #${player.number}` : ''}{player.age ? ` · ${player.age} años` : ''}</Text></View>
             </View>)}
           </ScrollView>
         </SafeAreaView>
@@ -305,7 +305,7 @@ export default function App() {
                 <Pressable onPress={() => showPlayers(selected.away, selected.awayTeamId)} style={[styles.actionButton, { flex: 1, justifyContent: 'center' }]}><Text style={styles.actionLabel}>Jugadores visitante</Text></Pressable>
               </View>
             ) : null}
-            <Text style={styles.dimText}>{matchDayText(selected.date)} Â· {matchHour(selected.date)} (PerÃº)</Text>
+            <Text style={styles.dimText}>{matchDayText(selected.date)} · {matchHour(selected.date)} (Perú)</Text>
             {selected.venue ? <Text style={[styles.dimText, { marginTop: 8 }]}>{selected.venue}</Text> : null}
           </View>
           <View style={styles.detailActions}>
@@ -318,19 +318,19 @@ export default function App() {
               <Text style={styles.actionLabel}>Ver en {selected.source}</Text>
             </Pressable>
           </View>
-          <Text style={styles.sectionTitle}>InformaciÃ³n del partido</Text>
+          <Text style={styles.sectionTitle}>Información del partido</Text>
           <View style={styles.informationBox}>
             <Text style={styles.infoRow}>Estado: {selected.statusText}</Text>
-            <Text style={styles.infoRow}>CompeticiÃ³n: {selected.league}</Text>
+            <Text style={styles.infoRow}>Competición: {selected.league}</Text>
             <Text style={styles.infoRow}>Fuente: {selected.source}</Text>
-            <Text style={[styles.dimText, { marginTop: 16 }]}>Los eventos y estadÃ­sticas detalladas dependen de la fuente. Abre el enlace original para consultar mÃ¡s informaciÃ³n.</Text>
+            <Text style={[styles.dimText, { marginTop: 16 }]}>Los eventos y estadísticas detalladas dependen de la fuente. Abre el enlace original para consultar más información.</Text>
           </View>
         </ScrollView>
       ) : (
         <>
           {isMatchSection && section !== 'Favorito' ? (
             <View style={styles.daysRow}>
-              {(['AYER', 'HOY', 'DIRECTO', 'MAÃ‘ANA'] as const).map(tab => (
+              {(['AYER', 'HOY', 'DIRECTO', 'MAÑANA'] as const).map(tab => (
                 <Pressable key={tab} onPress={() => chooseDay(tab)} style={styles.dayItem}>
                   <Text style={[styles.dayLabel, tabIsActive(tab) && styles.activeDayLabel]}>{tab}</Text>
                   {tabIsActive(tab) ? <View style={styles.dayIndicator} /> : null}
@@ -372,8 +372,8 @@ export default function App() {
               refreshControl={<RefreshControl refreshing={loading} onRefresh={refreshMatches} tintColor={C.green} colors={[C.green]} />}>
               <View style={styles.headingRow}>
                 <View style={styles.flex}>
-                  <Text style={styles.listTitle}>{section === 'Favorito' ? 'Partidos guardados' : direct ? 'Partidos en directo' : `Partidos Â· ${visibleDay}`}</Text>
-                  {section !== 'Favorito' ? <Text style={styles.sourceText}>{matchDayText(`${matchDate}T12:00:00Z`)} Â· Fuente {source}{cached ? ' Â· CachÃ©' : ''}</Text> : null}
+                  <Text style={styles.listTitle}>{section === 'Favorito' ? 'Partidos guardados' : direct ? 'Partidos en directo' : `Partidos · ${visibleDay}`}</Text>
+                  {section !== 'Favorito' ? <Text style={styles.sourceText}>{matchDayText(`${matchDate}T12:00:00Z`)} · Fuente {source}{cached ? ' · Caché' : ''}</Text> : null}
                 </View>
                 <Pressable onPress={refreshMatches} style={styles.refreshButton} accessibilityLabel="Actualizar partidos">
                   <Ionicons name="refresh-outline" color={C.green} size={23} />
@@ -386,7 +386,7 @@ export default function App() {
                 <View style={styles.emptyBox}>
                   <Ionicons name={section === 'Favorito' ? 'star-outline' : direct ? 'radio-outline' : 'football-outline'} color={C.subtle} size={34} />
                   <Text style={styles.emptyTitle}>{section === 'Favorito' ? 'No hay favoritos' : direct ? 'No hay partidos en vivo' : 'No hay encuentros para mostrar'}</Text>
-                  <Text style={styles.emptyText}>{section === 'Favorito' ? 'Guarda cualquier partido tocando la estrella. QuedarÃ¡ disponible incluso si cierras la aplicaciÃ³n.' : search ? 'Prueba con otro equipo o competiciÃ³n.' : 'Puede que no haya partidos este dÃ­a en las ligas consultadas o que la fuente no los cubra.'}</Text>
+                  <Text style={styles.emptyText}>{section === 'Favorito' ? 'Guarda cualquier partido tocando la estrella. Quedará disponible incluso si cierras la aplicación.' : search ? 'Prueba con otro equipo o competición.' : 'Puede que no haya partidos este día en las ligas consultadas o que la fuente no los cubra.'}</Text>
                   {section !== 'Favorito' ? <Pressable style={styles.greenOutline} onPress={refreshMatches}><Text style={styles.greenText}>Reintentar</Text></Pressable> : null}
                 </View>
               ) : null}
@@ -411,20 +411,20 @@ export default function App() {
                     </View>
                   </View>
                   <View style={styles.matchFooter}>
-                    <Text style={styles.footerDate}>{matchDayText(match.date)} Â· {matchHour(match.date)} PER</Text>
+                    <Text style={styles.footerDate}>{matchDayText(match.date)} · {matchHour(match.date)} PER</Text>
                     <Pressable hitSlop={12} style={styles.favoriteButton} onPress={event => { event.stopPropagation(); toggleFavorite(match); }} accessibilityLabel="Guardar como favorito">
                       <Ionicons name={favoriteIds.has(match.id) ? 'star' : 'star-outline'} size={21} color={favoriteIds.has(match.id) ? C.green : C.subtle} />
                     </Pressable>
                   </View>
                 </Pressable>
               ))}
-              {lastUpdated && section !== 'Favorito' ? <Text style={styles.refreshFoot}>Actualizado: {publishedText(lastUpdated)} Â· Arrastra hacia abajo para actualizar.</Text> : null}
+              {lastUpdated && section !== 'Favorito' ? <Text style={styles.refreshFoot}>Actualizado: {publishedText(lastUpdated)} · Arrastra hacia abajo para actualizar.</Text> : null}
             </ScrollView>
           ) : (
             <ScrollView
               style={styles.flex} contentContainerStyle={styles.listContent}
               refreshControl={<RefreshControl refreshing={newsLoading} onRefresh={refreshNews} tintColor={C.green} colors={[C.green]} />}>
-              <Text style={styles.sectionIntroduction}>{section === 'Fichaje' ? 'Noticias y rumores de transferencias publicados por las fuentes. Un rumor no confirma un fichaje.' : 'Actualidad del fÃºtbol internacional desde fuentes deportivas.'}</Text>
+              <Text style={styles.sectionIntroduction}>{section === 'Fichaje' ? 'Noticias y rumores de transferencias publicados por las fuentes. Un rumor no confirma un fichaje.' : 'Actualidad del fútbol internacional desde fuentes deportivas.'}</Text>
               {newsLoading && articles.length === 0 ? <ActivityIndicator color={C.green} style={{ marginVertical: 30 }} size="large" /> : null}
               {newsError ? <View style={styles.warningBox}><Ionicons name="wifi-outline" color={C.subtle} size={19} /><Text style={styles.warningText}>{newsError}</Text></View> : null}
               {newsWarning ? <Text style={styles.warningNote}>{newsWarning}</Text> : null}
@@ -432,7 +432,7 @@ export default function App() {
                 <View style={styles.emptyBox}>
                   <Ionicons name={section === 'Fichaje' ? 'swap-horizontal-outline' : 'newspaper-outline'} color={C.subtle} size={35} />
                   <Text style={styles.emptyTitle}>No se encontraron publicaciones</Text>
-                  <Text style={styles.emptyText}>No se inventan fichajes ni noticias. Prueba actualizar o cambiar la bÃºsqueda.</Text>
+                  <Text style={styles.emptyText}>No se inventan fichajes ni noticias. Prueba actualizar o cambiar la búsqueda.</Text>
                   <Pressable style={styles.greenOutline} onPress={refreshNews}><Text style={styles.greenText}>Actualizar noticias</Text></Pressable>
                 </View>
               ) : null}
@@ -441,14 +441,14 @@ export default function App() {
                   {article.image ? <Image source={{ uri: article.image }} style={styles.articleImage} resizeMode="cover" /> : null}
                   <View style={styles.articleBody}>
                     <View style={styles.articleHead}>
-                      <Text style={styles.articleLeague}>{article.league} Â· ESPN</Text>
+                      <Text style={styles.articleLeague}>{article.league} · ESPN</Text>
                       {article.isTransfer ? <Text style={styles.transferTag}>MERCADO</Text> : null}
                     </View>
                     <Text style={styles.articleTitle}>{article.title}</Text>
                     {article.description ? <Text numberOfLines={3} style={styles.articleDescription}>{article.description}</Text> : null}
                     <View style={styles.articleFooter}>
                       <Text style={styles.articleTime}>{publishedText(article.published)}</Text>
-                      <View style={styles.articleLink}><Text style={styles.greenText}>Leer artÃ­culo</Text><Ionicons name="open-outline" size={16} color={C.green} /></View>
+                      <View style={styles.articleLink}><Text style={styles.greenText}>Leer artículo</Text><Ionicons name="open-outline" size={16} color={C.green} /></View>
                     </View>
                   </View>
                 </Pressable>
@@ -473,7 +473,7 @@ export default function App() {
           <ScrollView style={styles.drawerPanel} contentContainerStyle={styles.drawerInner}>
             <View style={styles.drawerHeader}>
               <Text style={styles.drawerBrand}>GOL<Text style={{ color: C.green }}>FLASH</Text></Text>
-              <Pressable onPress={() => setDrawer(false)} accessibilityLabel="Cerrar menÃº"><Ionicons name="close" color={C.white} size={25} /></Pressable>
+              <Pressable onPress={() => setDrawer(false)} accessibilityLabel="Cerrar menú"><Ionicons name="close" color={C.white} size={25} /></Pressable>
             </View>
             <Text style={styles.drawerCaption}>NAVEGACIÃ“N</Text>
             {NAV.map(item => (
@@ -483,7 +483,7 @@ export default function App() {
               </Pressable>
             ))}
             <Text style={[styles.drawerCaption, { marginTop: 22 }]}>PARTIDOS</Text>
-            {(['AYER', 'HOY', 'DIRECTO', 'MAÃ‘ANA'] as const).map(label => (
+            {(['AYER', 'HOY', 'DIRECTO', 'MAÑANA'] as const).map(label => (
               <Pressable key={label} style={styles.drawerItem} onPress={() => { navigate('Partidos'); chooseDay(label); }}>
                 <Ionicons name={label === 'DIRECTO' ? 'radio-outline' : 'calendar-outline'} color={C.white} size={21} />
                 <Text style={styles.drawerItemText}>{label === 'DIRECTO' ? 'En directo' : label}</Text>
@@ -506,14 +506,14 @@ export default function App() {
               <Text style={styles.modalTitle}>Selecciona una fecha</Text>
               <Pressable onPress={() => setCalendar(false)}><Ionicons name="close" color={C.white} size={25} /></Pressable>
             </View>
-            <Text style={styles.dimText}>Fechas y horarios de PerÃº (UTCâˆ’5)</Text>
+            <Text style={styles.dimText}>Fechas y horarios de Perú (UTCâˆ’5)</Text>
             <ScrollView style={styles.calendarList}>
               {Array.from({ length: 22 }, (_, i) => i - 7).map(value => (
                 <Pressable key={value} style={[styles.calendarOption, !direct && offset === value && styles.calendarOptionSelected]} onPress={() => {
                   setOffset(value); setDirect(false); setSelected(null); setSection('Partidos'); setCalendar(false);
                 }}>
                   <Ionicons name="calendar-outline" color={!direct && offset === value ? C.green : C.subtle} size={20} />
-                  <Text style={styles.calendarText}>{value === 0 ? 'Hoy' : value === -1 ? 'Ayer' : value === 1 ? 'MaÃ±ana' : matchDayText(`${dayFromOffset(value)}T12:00:00Z`)}</Text>
+                  <Text style={styles.calendarText}>{value === 0 ? 'Hoy' : value === -1 ? 'Ayer' : value === 1 ? 'Mañana' : matchDayText(`${dayFromOffset(value)}T12:00:00Z`)}</Text>
                   {!direct && offset === value ? <Ionicons name="checkmark-circle" color={C.green} size={20} /> : null}
                 </Pressable>
               ))}
@@ -526,9 +526,9 @@ export default function App() {
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <View style={styles.modalTitleRow}><Text style={styles.modalTitle}>Acerca de GolFlash</Text><Pressable onPress={() => setAbout(false)}><Ionicons name="close" color={C.white} size={25} /></Pressable></View>
-            <Text style={styles.aboutParagraph}>AplicaciÃ³n informativa de fÃºtbol. Consulta partidos y resultados reales, guarda favoritos en tu dispositivo y lee noticias y transferencias.</Text>
-            <Text style={styles.aboutParagraph}>Fuentes: ESPN (API pÃºblica no oficial) y TheSportsDB como respaldo de cobertura limitada. No garantizan todos los partidos ni informaciÃ³n en vivo sin retraso.</Text>
-            <Text style={styles.aboutParagraph}>Los artÃ­culos se abren en su fuente original. GolFlash no ofrece apuestas ni dinero real.</Text>
+            <Text style={styles.aboutParagraph}>Aplicación informativa de fútbol. Consulta partidos y resultados reales, guarda favoritos en tu dispositivo y lee noticias y transferencias.</Text>
+            <Text style={styles.aboutParagraph}>Fuentes: ESPN (API pública no oficial) y TheSportsDB como respaldo de cobertura limitada. No garantizan todos los partidos ni información en vivo sin retraso.</Text>
+            <Text style={styles.aboutParagraph}>Los artículos se abren en su fuente original. GolFlash no ofrece apuestas ni dinero real.</Text>
             <Pressable style={styles.aboutLink} onPress={() => openPage('https://www.espn.com/soccer/')}><Text style={styles.greenText}>Visitar ESPN</Text><Ionicons name="open-outline" size={18} color={C.green} /></Pressable>
           </View>
         </View>
