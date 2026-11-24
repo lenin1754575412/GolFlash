@@ -176,6 +176,7 @@ export default function App() {
       setLastUpdated(updated);
       AsyncStorage.setItem(cacheKey, JSON.stringify({ matches: result.matches, source: result.source, updated })).catch(() => {});
       const currentById = new Map(result.matches.map(m => [m.id, m]));
+      setSelected(previous => previous ? currentById.get(previous.id) || previous : null);
       setFavorites(existing => existing.map(m => currentById.get(m.id) || m));
     } catch (cause: any) {
       if (rid !== matchReq.current) return;
@@ -203,7 +204,7 @@ export default function App() {
   useEffect(() => {
     if (!appActive) return;
     refreshMatches();
-    const timer = setInterval(refreshMatches, 90000);
+    const timer = setInterval(refreshMatches, 30000);
     return () => { clearInterval(timer); matchReq.current++; };
   }, [refreshMatches, appActive]);
 
@@ -420,7 +421,7 @@ export default function App() {
                   </View>
                 </Pressable>
               ))}
-              {lastUpdated && section !== 'Favorito' ? <Text style={styles.refreshFoot}>Actualizado: {publishedText(lastUpdated)} · Arrastra hacia abajo para actualizar.</Text> : null}
+              {lastUpdated && section !== 'Favorito' ? <Text style={styles.refreshFoot}>Actualizado: {matchDayText(lastUpdated)} {matchHour(lastUpdated)} · Arrastra hacia abajo para actualizar.</Text> : null}
             </ScrollView>
           ) : (
             <ScrollView

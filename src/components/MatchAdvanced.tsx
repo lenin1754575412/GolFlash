@@ -793,6 +793,9 @@ export default function MatchAdvanced({ match }: { match: Match }) {
           `${BASE}/${match.leagueCode}/summary?event=${encodeURIComponent(eventId)}`
         );
 
+        if (!result?.header?.competitions?.length) {
+          throw new Error("Respuesta incompleta de ESPN");
+        }
         if (alive) {
           setData(result);
           setError('');
@@ -807,7 +810,7 @@ export default function MatchAdvanced({ match }: { match: Match }) {
 
     load();
 
-    const timer = match.status === 'live'
+    const timer = (match.status === 'live' || match.status === 'scheduled')
       ? setInterval(load, 30000)
       : undefined;
 
