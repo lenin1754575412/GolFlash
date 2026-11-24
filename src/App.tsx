@@ -1,3 +1,4 @@
+import { MotionView, MotionPressable, MotionScore, LivePulse, MotionDrawer } from './components/GolMotion';
 import MatchAdvanced from './components/MatchAdvanced';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -293,12 +294,12 @@ export default function App() {
             <Ionicons name="arrow-back" size={19} color={C.white} />
             <Text style={styles.backLineText}>Volver</Text>
           </Pressable>
-          <View style={styles.detailCard}>
+          <MotionView key={selected.id} style={styles.detailCard}>
             <Text style={styles.secondaryLabel}>{selected.league}</Text>
             <Text style={[styles.detailStatus, isLive(selected) && { color: C.red }]}>{matchState(selected)}</Text>
             <View style={styles.detailTeamsRow}>
               <View style={styles.detailTeam}><Logo url={selected.homeLogo} size={56} /><Text style={styles.detailTeamText}>{selected.home}</Text></View>
-              <Text style={styles.detailScore}>{scoreText(selected)}</Text>
+              <MotionScore style={styles.detailScore} value={scoreText(selected)} />
               <View style={styles.detailTeam}><Logo url={selected.awayLogo} size={56} /><Text style={styles.detailTeamText}>{selected.away}</Text></View>
             </View>
             {selected.source === 'ESPN' ? (
@@ -309,7 +310,7 @@ export default function App() {
             ) : null}
             <Text style={styles.dimText}>{matchDayText(selected.date)} · {matchHour(selected.date)} (Perú)</Text>
             {selected.venue ? <Text style={[styles.dimText, { marginTop: 8 }]}>{selected.venue}</Text> : null}
-          </View>
+          </MotionView>
           <View style={styles.detailActions}>
             <Pressable style={styles.actionButton} onPress={() => toggleFavorite(selected)}>
               <Ionicons name={favoriteIds.has(selected.id) ? 'star' : 'star-outline'} color={C.green} size={22} />
@@ -320,7 +321,7 @@ export default function App() {
               <Text style={styles.actionLabel}>Ver en {selected.source}</Text>
             </Pressable>
           </View>
-          <MatchAdvanced key={selected.id} match={selected} />
+          <MatchAdvanced key={"advanced-" + selected.id} match={selected} />
 <Text style={styles.sectionTitle}>Información del partido</Text>
           <View style={styles.informationBox}>
             <Text style={styles.infoRow}>Estado: {selected.statusText}</Text>
@@ -393,8 +394,7 @@ export default function App() {
                   {section !== 'Favorito' ? <Pressable style={styles.greenOutline} onPress={refreshMatches}><Text style={styles.greenText}>Reintentar</Text></Pressable> : null}
                 </View>
               ) : null}
-              {filtered.map(match => (
-                <Pressable key={match.id} style={styles.matchCard} onPress={() => setSelected(match)}>
+              {Array.from(new Map(filtered.map(item => [item.id, item])).values()).map((match, index) => (<MotionView key={"motion-match-" + match.id} delay={Math.min(index * 35, 180)}><Pressable style={styles.matchCard} onPress={() => setSelected(match)}>
                   <View style={styles.matchMeta}>
                     <Text numberOfLines={1} style={styles.matchLeague}>{match.league}</Text>
                     <Text style={[styles.matchMetaStatus, isLive(match) && { color: C.red }]}>{matchState(match)}</Text>
@@ -405,8 +405,8 @@ export default function App() {
                       <Text numberOfLines={2} style={styles.matchTeamName}>{match.home}</Text>
                     </View>
                     <View style={styles.scoreCenter}>
-                      <Text style={styles.scoreText}>{scoreText(match)}</Text>
-                      {isLive(match) ? <Text style={styles.liveText}>â— EN VIVO</Text> : null}
+                      <MotionScore style={styles.scoreText} value={scoreText(match)} />
+                      {isLive(match) ? <LivePulse style={styles.liveText} /> : null}
                     </View>
                     <View style={styles.matchTeam}>
                       <Logo url={match.awayLogo} size={34} />
@@ -415,12 +415,11 @@ export default function App() {
                   </View>
                   <View style={styles.matchFooter}>
                     <Text style={styles.footerDate}>{matchDayText(match.date)} · {matchHour(match.date)} PER</Text>
-                    <Pressable hitSlop={12} style={styles.favoriteButton} onPress={event => { event.stopPropagation(); toggleFavorite(match); }} accessibilityLabel="Guardar como favorito">
+                    <MotionPressable feedback hitSlop={12} style={styles.favoriteButton} onPress={event => { event.stopPropagation(); toggleFavorite(match); }} accessibilityLabel="Guardar como favorito">
                       <Ionicons name={favoriteIds.has(match.id) ? 'star' : 'star-outline'} size={21} color={favoriteIds.has(match.id) ? C.green : C.subtle} />
-                    </Pressable>
+                    </MotionPressable>
                   </View>
-                </Pressable>
-              ))}
+                </Pressable></MotionView>))}
               {lastUpdated && section !== 'Favorito' ? <Text style={styles.refreshFoot}>Actualizado: {matchDayText(lastUpdated)} {matchHour(lastUpdated)} · Arrastra hacia abajo para actualizar.</Text> : null}
             </ScrollView>
           ) : (
@@ -439,8 +438,7 @@ export default function App() {
                   <Pressable style={styles.greenOutline} onPress={refreshNews}><Text style={styles.greenText}>Actualizar noticias</Text></Pressable>
                 </View>
               ) : null}
-              {filteredArticles.map(article => (
-                <Pressable key={article.id} style={styles.articleCard} onPress={() => openPage(article.link)}>
+              {filteredArticles.map((article, index) => (<MotionView key={article.id} delay={Math.min(index * 40, 200)}><Pressable style={styles.articleCard} onPress={() => openPage(article.link)}>
                   {article.image ? <Image source={{ uri: article.image }} style={styles.articleImage} resizeMode="cover" /> : null}
                   <View style={styles.articleBody}>
                     <View style={styles.articleHead}>
@@ -454,8 +452,7 @@ export default function App() {
                       <View style={styles.articleLink}><Text style={styles.greenText}>Leer artículo</Text><Ionicons name="open-outline" size={16} color={C.green} /></View>
                     </View>
                   </View>
-                </Pressable>
-              ))}
+                </Pressable></MotionView>))}
             </ScrollView>
           )}
         </>
@@ -473,12 +470,12 @@ export default function App() {
       {drawer ? (
         <View style={styles.drawerLayer}>
           <Pressable style={styles.drawerBackdrop} onPress={() => setDrawer(false)} />
-          <ScrollView style={styles.drawerPanel} contentContainerStyle={styles.drawerInner}>
+          <MotionDrawer style={styles.drawerPanel} contentContainerStyle={styles.drawerInner}>
             <View style={styles.drawerHeader}>
               <Text style={styles.drawerBrand}>GOL<Text style={{ color: C.green }}>FLASH</Text></Text>
               <Pressable onPress={() => setDrawer(false)} accessibilityLabel="Cerrar menú"><Ionicons name="close" color={C.white} size={25} /></Pressable>
             </View>
-            <Text style={styles.drawerCaption}>NAVEGACIÃ“N</Text>
+            <Text style={styles.drawerCaption}>NAVEGACIÓN</Text>
             {NAV.map(item => (
               <Pressable key={item.label} style={styles.drawerItem} onPress={() => navigate(item.label)}>
                 <Ionicons name={item.icon} color={item.label === section ? C.green : C.white} size={22} />
@@ -498,7 +495,7 @@ export default function App() {
             <Pressable style={styles.drawerItem} onPress={() => { setDrawer(false); setAbout(true); }}>
               <Ionicons name="information-circle-outline" color={C.white} size={22} /><Text style={styles.drawerItemText}>Acerca de GolFlash</Text>
             </Pressable>
-          </ScrollView>
+          </MotionDrawer>
         </View>
       ) : null}
 

@@ -1,3 +1,4 @@
+import { MotionView, MotionBar, MotionScore } from './GolMotion';
 declare const process: {
   env: {
     EXPO_PUBLIC_PHOTO_SERVER?: string;
@@ -367,6 +368,7 @@ function PhotoImage({
   return (
     <Image
       key={current}
+      fadeDuration={300}
       source={{ uri: current }}
       resizeMode={player ? 'cover' : 'contain'}
       onError={() => {
@@ -523,16 +525,10 @@ function Bar({ title, home, away }: {
       </View>
       <View style={s.trackRow}>
         <View style={s.track}>
-          <View style={{
-            width: `${hp}%`, backgroundColor: C.green,
-            height: 6, borderRadius: 8, alignSelf: 'flex-end'
-          }} />
+          <MotionBar percent={hp} color={C.green} reverse />
         </View>
         <View style={s.track}>
-          <View style={{
-            width: `${ap}%`, backgroundColor: C.blue,
-            height: 6, borderRadius: 8
-          }} />
+          <MotionBar percent={ap} color={C.blue} />
         </View>
       </View>
     </View>
@@ -616,11 +612,11 @@ function Pitch({ roster, reverse }: { roster: any; reverse?: boolean }) {
             reverse ? { bottom: 0 } : { top: 0 }
           ]} />
           {ordered.map((row, i) => (
-            <View key={i} style={s.formationRow}>
+            <MotionView key={i} delay={i * 75} style={s.formationRow}>
               {row.map((p: any, j: number) => (
                 <Player key={`${p?.athlete?.id || j}-${j}`} item={p} />
               ))}
-            </View>
+            </MotionView>
           ))}
           <View pointerEvents="none" style={[
             s.halfCircle,
@@ -1098,11 +1094,10 @@ export default function MatchAdvanced({ match }: { match: Match }) {
             <Card title="MARCADOR ACTUALIZADO">
               <View style={s.comparisonHeader}>
                 <Avatar uri={match.homeLogo} size={48} />
-                <Text style={s.score}>
-                  {competition?.competitors?.find((x: any) => x.homeAway === 'home')?.score ?? match.homeScore ?? '—'}
-                  {' - '}
-                  {competition?.competitors?.find((x: any) => x.homeAway === 'away')?.score ?? match.awayScore ?? '—'}
-                </Text>
+                <MotionScore
+  style={s.score}
+  value={String(competition?.competitors?.find((x: any) => x.homeAway === 'home')?.score ?? match.homeScore ?? '-') + ' - ' + String(competition?.competitors?.find((x: any) => x.homeAway === 'away')?.score ?? match.awayScore ?? '-')}
+/>
                 <Avatar uri={match.awayLogo} size={48} />
               </View>
               <Text style={s.center}>
@@ -1146,10 +1141,10 @@ export default function MatchAdvanced({ match }: { match: Match }) {
           </Pressable>
         </View>
       ) : (
-        <View>
+        <MotionView key={tab}>
           {error ? <Text style={s.note}>{error} Mostrando datos anteriores.</Text> : null}
           {render()}
-        </View>
+        </MotionView>
       )}
 
       <Text style={s.note}>Fuente: ESPN · Cobertura según competición.</Text>
