@@ -1,3 +1,4 @@
+import MatchAdvanced from './components/MatchAdvanced';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator, Alert, AppState, Image, Linking, Modal, Pressable,
@@ -92,7 +93,7 @@ export default function App() {
   const [cached, setCached] = useState(false);
   const [lastUpdated, setLastUpdated] = useState('');
   const [appActive, setAppActive] = useState(true);
-  const searchRef = useRef<TextInput>(null);
+  const searchRef = useRef<React.ElementRef<typeof TextInput> | null>(null);
   const matchReq = useRef(0);
   const newsReq = useRef(0);
   const matchDate = direct ? dayFromOffset(0) : dayFromOffset(offset);
@@ -251,7 +252,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <StatusBar style="light" backgroundColor={C.bg} />
+      <StatusBar style="light" />
       <View style={styles.header}>
         <Pressable style={styles.headerButton} onPress={() => setDrawer(true)} accessibilityLabel="Abrir menú">
           <Ionicons name="menu-outline" size={32} color={C.white} />
@@ -318,7 +319,8 @@ export default function App() {
               <Text style={styles.actionLabel}>Ver en {selected.source}</Text>
             </Pressable>
           </View>
-          <Text style={styles.sectionTitle}>Información del partido</Text>
+          <MatchAdvanced key={selected.id} match={selected} />
+<Text style={styles.sectionTitle}>Información del partido</Text>
           <View style={styles.informationBox}>
             <Text style={styles.infoRow}>Estado: {selected.statusText}</Text>
             <Text style={styles.infoRow}>Competición: {selected.league}</Text>
@@ -620,8 +622,8 @@ const styles = StyleSheet.create({
   articleFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15, gap: 8 },
   articleTime: { color: C.subtle, fontSize: 11 },
   articleLink: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  drawerLayer: { ...StyleSheet.absoluteFillObject, zIndex: 90, flexDirection: 'row' },
-  drawerBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: C.shade },
+  drawerLayer: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, zIndex: 90, flexDirection: 'row' },
+  drawerBackdrop: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: C.shade },
   drawerPanel: { width: '82%', backgroundColor: '#272727', borderRightWidth: 1, borderColor: C.line },
   drawerInner: { paddingHorizontal: 18, paddingTop: 32, paddingBottom: 30 },
   drawerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 30 },
