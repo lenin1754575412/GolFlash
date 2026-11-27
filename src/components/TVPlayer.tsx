@@ -1,45 +1,143 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { useVideoPlayer, VideoView } from 'expo-video';
+import React, { useState } from 'react';
+
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ActivityIndicator,
+} from 'react-native';
+
+import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 
-const SOURCE =
-  'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
+const WEBSITE = 'https://futbol-libre.com/';
 
 export default function TVPlayer() {
-  const player = useVideoPlayer(SOURCE);
+
+  const [opened, setOpened] = useState(false);
+  const [reload, setReload] = useState(0);
 
   return (
     <View style={s.card}>
+
       <View style={s.header}>
         <Ionicons
           name="tv-outline"
+          size={25}
           color="#8BDD4B"
-          size={23}
         />
 
         <Text style={s.title}>
-          GOLFLASH PLAYER
+          GOLFLASH WEB TV
         </Text>
 
-        <Text style={s.hd}>HD</Text>
+        <Pressable
+          onPress={() => setReload(n => n + 1)}
+        >
+          <Ionicons
+            name="refresh-outline"
+            color="#8BDD4B"
+            size={25}
+          />
+        </Pressable>
       </View>
 
-      <VideoView
-        player={player}
-        style={s.video}
-        nativeControls={true}
-        contentFit="contain"
-        fullscreenOptions={{ enable: true }}
-      />
+      {opened ? (
+        <>
+          <View style={s.browser}>
+            <WebView<{}>
+              key={reload}
+              source={{ uri: WEBSITE }}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              allowsFullscreenVideo={true}
+              allowsInlineMediaPlayback={true}
+              startInLoadingState={true}
+              nestedScrollEnabled={true}
+              mixedContentMode="never"
+              allowFileAccess={false}
+              originWhitelist={['https://*']}
+              style={{ flex: 1 }}
+              renderLoading={() => (
+                <View style={s.loading}>
+                  <ActivityIndicator
+                    size="large"
+                    color="#8BDD4B"
+                  />
+                  <Text style={s.muted}>
+                    Cargando página...
+                  </Text>
+                </View>
+              )}
+              renderError={() => (
+                <View style={s.loading}>
+                  <Ionicons
+                    name="cloud-offline-outline"
+                    size={45}
+                    color="#8BDD4B"
+                  />
 
-      <Text style={s.description}>
-        Reproductor integrado
-      </Text>
+                  <Text style={s.white}>
+                    Página no disponible
+                  </Text>
 
-      <Text style={s.info}>
-        Video de prueba - HLS
-      </Text>
+                  <Pressable
+                    onPress={() => setReload(n => n + 1)}
+                  >
+                    <Text style={s.green}>
+                      Reintentar
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+            />
+          </View>
+
+          <Pressable
+            style={s.button}
+            onPress={() => setOpened(false)}
+          >
+            <Text style={s.buttonText}>
+              CERRAR PÁGINA
+            </Text>
+          </Pressable>
+        </>
+      ) : (
+        <>
+          <View style={s.empty}>
+            <Ionicons
+              name="tv-outline"
+              size={65}
+              color="#8BDD4B"
+            />
+
+            <Text style={s.white}>
+              Centro deportivo
+            </Text>
+
+            <Text style={s.muted}>
+              Navegador integrado de GolFlash
+            </Text>
+          </View>
+
+          <Pressable
+            style={s.button}
+            onPress={() => setOpened(true)}
+          >
+            <Ionicons
+              name="play-circle"
+              size={25}
+              color="#101810"
+            />
+
+            <Text style={s.buttonText}>
+              ABRIR PÁGINA
+            </Text>
+          </Pressable>
+        </>
+      )}
+
     </View>
   );
 }
@@ -47,47 +145,67 @@ export default function TVPlayer() {
 const s = StyleSheet.create({
   card: {
     backgroundColor: '#151D18',
+    padding: 14,
     borderRadius: 18,
-    padding: 13,
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#29382E',
+    gap: 15,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 15,
+    gap: 12,
   },
   title: {
     flex: 1,
     color: '#8BDD4B',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
   },
-  hd: {
-    color: '#8BDD4B',
-    backgroundColor: '#293D24',
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 5,
-    fontWeight: '700',
-  },
-  video: {
-    width: '100%',
-    aspectRatio: 16 / 9,
+  browser: {
+    height: 580,
     backgroundColor: '#000000',
     borderRadius: 12,
+    overflow: 'hidden',
   },
-  description: {
+  loading: {
+    flex: 1,
+    backgroundColor: '#090D0A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 15,
+  },
+  empty: {
+    height: 220,
+    backgroundColor: '#090D0A',
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 14,
+  },
+  white: {
     color: '#FFFFFF',
+    fontSize: 17,
     fontWeight: '700',
-    fontSize: 15,
-    marginTop: 15,
   },
-  info: {
-    color: '#A5B0A8',
-    fontSize: 12,
-    marginTop: 6,
+  muted: {
+    color: '#999999',
+    fontSize: 13,
+  },
+  green: {
+    color: '#8BDD4B',
+    fontWeight: '700',
+  },
+  button: {
+    backgroundColor: '#8BDD4B',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  buttonText: {
+    color: '#101810',
+    fontWeight: '800',
   },
 });
