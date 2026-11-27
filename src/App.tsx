@@ -1,3 +1,4 @@
+import LiveTV from './components/LiveTV';
 import SportsHub from './components/SportsHub';
 import SettingsScreen from './components/SettingsScreen';
 import DatePicker from './components/DatePicker';
@@ -313,6 +314,7 @@ export default function App() {
       </View>
 
       {!selected ? <SportsHub /> : null}
+      {!selected ? <LiveTV /> : null}
       <Modal visible={teamRoster !== null} animationType="slide" onRequestClose={() => setTeamRoster(null)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
           <Pressable onPress={() => setTeamRoster(null)} style={{ padding: 20, flexDirection: 'row', alignItems: 'center', gap: 12 }}><Ionicons name="arrow-back" size={25} color={C.white}/><Text style={{ color: C.white, fontSize: 20 }}>{teamRoster?.name || 'Jugadores'}</Text></Pressable>
