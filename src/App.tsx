@@ -1,3 +1,5 @@
+import SportsHub from './components/SportsHub';
+import SettingsScreen from './components/SettingsScreen';
 import DatePicker from './components/DatePicker';
 import { MotionView, MotionPressable, MotionScore, LivePulse, MotionDrawer } from './components/GolMotion';
 import MatchAdvanced from './components/MatchAdvanced';
@@ -84,6 +86,21 @@ export default function App() {
   const [drawer, setDrawer] = useState(false);
   const [calendar, setCalendar] = useState(false);
   const [about, setAbout] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    AsyncStorage.getItem('@golflash/auto-refresh')
+      .then(value => {
+        if (mounted && value !== null) {
+          setAutoRefresh(value !== 'false');
+        }
+      })
+      .catch(() => {});
+
+    return () => { mounted = false; };
+  }, []);
   const [selected, setSelected] = useState<Match | null>(null);
   const [teamRoster, setTeamRoster] = useState<{ name: string; players: Player[] } | null>(null);
   const [rosterLoading, setRosterLoading] = useState(false);
@@ -222,9 +239,13 @@ export default function App() {
   useEffect(() => {
     if (!appActive) return;
     refreshMatches();
+    if (!autoRefresh) {
+      return () => { matchReq.current++; };
+    }
+
     const timer = setInterval(refreshMatches, 30000);
     return () => { clearInterval(timer); matchReq.current++; };
-  }, [refreshMatches, appActive]);
+  }, [refreshMatches, appActive, autoRefresh]);
 
   useEffect(() => {
     if (!appActive || (section !== 'Fichaje' && section !== 'Noticia')) return;
@@ -291,6 +312,7 @@ export default function App() {
         </Pressable>
       </View>
 
+      {!selected ? <SportsHub /> : null}
       <Modal visible={teamRoster !== null} animationType="slide" onRequestClose={() => setTeamRoster(null)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
           <Pressable onPress={() => setTeamRoster(null)} style={{ padding: 20, flexDirection: 'row', alignItems: 'center', gap: 12 }}><Ionicons name="arrow-back" size={25} color={C.white}/><Text style={{ color: C.white, fontSize: 20 }}>{teamRoster?.name || 'Jugadores'}</Text></Pressable>
@@ -510,7 +532,7 @@ export default function App() {
               <Ionicons name="calendar-number-outline" color={C.white} size={22} /><Text style={styles.drawerItemText}>Elegir fecha</Text>
             </Pressable>
             <Pressable style={styles.drawerItem} onPress={() => { setDrawer(false); setAbout(true); }}>
-              <Ionicons name="information-circle-outline" color={C.white} size={22} /><Text style={styles.drawerItemText}>Acerca de GolFlash</Text>
+              <Ionicons name="settings-outline" color={C.white} size={22} /><Text style={styles.drawerItemText}>Configuraci&#243;n</Text>
             </Pressable>
           </MotionDrawer>
         </View>
@@ -530,17 +552,23 @@ export default function App() {
         }}
       />
 
-      <Modal visible={about} animationType="fade" transparent onRequestClose={() => setAbout(false)}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalTitleRow}><Text style={styles.modalTitle}>Acerca de GolFlash</Text><Pressable onPress={() => setAbout(false)}><Ionicons name="close" color={C.white} size={25} /></Pressable></View>
-            <Text style={styles.aboutParagraph}>Aplicación informativa de fútbol. Consulta partidos y resultados reales, guarda favoritos en tu dispositivo y lee noticias y transferencias.</Text>
-            <Text style={styles.aboutParagraph}>Fuentes: ESPN (API pública no oficial) y TheSportsDB como respaldo de cobertura limitada. No garantizan todos los partidos ni información en vivo sin retraso.</Text>
-            <Text style={styles.aboutParagraph}>Los artículos se abren en su fuente original. GolFlash no ofrece apuestas ni dinero real.</Text>
-            <Pressable style={styles.aboutLink} onPress={() => openPage('https://www.espn.com/soccer/')}><Text style={styles.greenText}>Visitar ESPN</Text><Ionicons name="open-outline" size={18} color={C.green} /></Pressable>
-          </View>
-        </View>
-      </Modal>
+      <SettingsScreen
+        visible={about}
+        onClose={() => setAbout(false)}
+        autoRefresh={autoRefresh}
+        onAutoRefresh={(value) => {
+          setAutoRefresh(value);
+          AsyncStorage.setItem(
+            '@golflash/auto-refresh',
+            String(value)
+          ).catch(() => {
+            Alert.alert(
+              'Configuracion',
+              'No se pudo guardar la preferencia.'
+            );
+          });
+        }}
+      />
     </SafeAreaView>
   );
 }

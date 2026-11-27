@@ -1,3 +1,4 @@
+import { getTimeZone } from './preferences';
 import type { Match, MatchResult, Status } from '../types';
 
 // ESPN ofrece datos públicos sin una clave en estos endpoints no oficiales.
@@ -134,7 +135,7 @@ export async function getMatches(day: string): Promise<MatchResult> {
 
 export function peruKey(date: Date): string {
   const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Lima', year: 'numeric', month: '2-digit', day: '2-digit',
+    timeZone: getTimeZone(), year: 'numeric', month: '2-digit', day: '2-digit',
   }).formatToParts(date);
   const part = (name: string) => parts.find(p => p.type === name)?.value || '00';
   return `${part('year')}-${part('month')}-${part('day')}`;
@@ -148,7 +149,7 @@ export function dayFromOffset(offset: number): string {
 export function matchHour(date: string): string {
   try {
     return new Intl.DateTimeFormat('es-PE', {
-      timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit', hour12: false,
+      timeZone: getTimeZone(), hour: '2-digit', minute: '2-digit', hour12: false,
     }).format(new Date(date));
   } catch { return '--:--'; }
 }
@@ -156,7 +157,7 @@ export function matchHour(date: string): string {
 export function matchDayText(date: string): string {
   try {
     return new Intl.DateTimeFormat('es-PE', {
-      timeZone: 'America/Lima', weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
+      timeZone: getTimeZone(), weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
     }).format(new Date(date));
   } catch { return date; }
 }
