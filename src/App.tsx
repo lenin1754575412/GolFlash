@@ -1,3 +1,4 @@
+import DatePicker from './components/DatePicker';
 import { MotionView, MotionPressable, MotionScore, LivePulse, MotionDrawer } from './components/GolMotion';
 import MatchAdvanced from './components/MatchAdvanced';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -69,7 +70,14 @@ function Logo({ url, size = 32 }: { url?: string; size?: number }) {
 
 export default function App() {
   const [section, setSection] = useState<Section>('Explorar');
-  const [offset, setOffset] = useState(0);
+  const [dayChoice, setDayChoice] = useState<number | string>(0);
+  const todayKey = dayFromOffset(0);
+  const offset = typeof dayChoice === 'number'
+    ? dayChoice
+    : Math.round(
+        (Date.parse(dayChoice + 'T12:00:00Z') -
+         Date.parse(todayKey + 'T12:00:00Z')) / 86400000
+      );
   const [direct, setDirect] = useState(false);
   const [search, setSearch] = useState('');
   const [league, setLeague] = useState('TODAS');
@@ -97,7 +105,16 @@ export default function App() {
   const searchRef = useRef<React.ElementRef<typeof TextInput> | null>(null);
   const matchReq = useRef(0);
   const newsReq = useRef(0);
-  const matchDate = direct ? dayFromOffset(0) : dayFromOffset(offset);
+  const matchDate = direct
+    ? todayKey
+    : typeof dayChoice === 'string'
+      ? dayChoice
+      : dayFromOffset(dayChoice);
+
+  const liveCount = matches.filter(
+    m => m.status === 'live' &&
+      peruKey(new Date(m.date)) === todayKey
+  ).length;
   const isMatchSection = section === 'Partidos' || section === 'Explorar' || section === 'Favorito';
 
   const showPlayers = async (name: string, teamId?: string) => {
@@ -242,7 +259,7 @@ export default function App() {
   }
   function chooseDay(day: 'AYER' | 'HOY' | 'DIRECTO' | 'MAÑANA') {
     setDirect(day === 'DIRECTO');
-    if (day !== 'DIRECTO') setOffset(day === 'AYER' ? -1 : day === 'MAÑANA' ? 1 : 0);
+    if (day !== 'DIRECTO') setDayChoice(day === 'AYER' ? -1 : day === 'MAÑANA' ? 1 : 0);
     setDrawer(false);
   }
   function tabIsActive(day: string): boolean {
@@ -336,7 +353,7 @@ export default function App() {
             <View style={styles.daysRow}>
               {(['AYER', 'HOY', 'DIRECTO', 'MAÑANA'] as const).map(tab => (
                 <Pressable key={tab} onPress={() => chooseDay(tab)} style={styles.dayItem}>
-                  <Text style={[styles.dayLabel, tabIsActive(tab) && styles.activeDayLabel]}>{tab}</Text>
+                  <Text style={[styles.dayLabel, tabIsActive(tab) && styles.activeDayLabel]}>{tab === 'DIRECTO' && matchDate === todayKey && !cached && !error && !loading ? 'DIRECTO (' + liveCount + ')' : tab}</Text>
                   {tabIsActive(tab) ? <View style={styles.dayIndicator} /> : null}
                 </Pressable>
               ))}
@@ -499,28 +516,19 @@ export default function App() {
         </View>
       ) : null}
 
-      <Modal visible={calendar} animationType="fade" transparent onRequestClose={() => setCalendar(false)}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalTitleRow}>
-              <Text style={styles.modalTitle}>Selecciona una fecha</Text>
-              <Pressable onPress={() => setCalendar(false)}><Ionicons name="close" color={C.white} size={25} /></Pressable>
-            </View>
-            <Text style={styles.dimText}>Fechas y horarios de Perú (UTCâˆ’5)</Text>
-            <ScrollView style={styles.calendarList}>
-              {Array.from({ length: 22 }, (_, i) => i - 7).map(value => (
-                <Pressable key={value} style={[styles.calendarOption, !direct && offset === value && styles.calendarOptionSelected]} onPress={() => {
-                  setOffset(value); setDirect(false); setSelected(null); setSection('Partidos'); setCalendar(false);
-                }}>
-                  <Ionicons name="calendar-outline" color={!direct && offset === value ? C.green : C.subtle} size={20} />
-                  <Text style={styles.calendarText}>{value === 0 ? 'Hoy' : value === -1 ? 'Ayer' : value === 1 ? 'Mañana' : matchDayText(`${dayFromOffset(value)}T12:00:00Z`)}</Text>
-                  {!direct && offset === value ? <Ionicons name="checkmark-circle" color={C.green} size={20} /> : null}
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      <DatePicker
+        visible={calendar}
+        value={matchDate}
+        onClose={() => setCalendar(false)}
+        onConfirm={(date) => {
+          setDayChoice(date);
+          setDirect(false);
+          setSelected(null);
+          setSection('Partidos');
+          setSearch('');
+          setCalendar(false);
+        }}
+      />
 
       <Modal visible={about} animationType="fade" transparent onRequestClose={() => setAbout(false)}>
         <View style={styles.modalBackdrop}>

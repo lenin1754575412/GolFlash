@@ -156,7 +156,7 @@ export function matchHour(date: string): string {
 export function matchDayText(date: string): string {
   try {
     return new Intl.DateTimeFormat('es-PE', {
-      timeZone: 'America/Lima', weekday: 'short', day: '2-digit', month: 'short',
+      timeZone: 'America/Lima', weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
     }).format(new Date(date));
   } catch { return date; }
 }
