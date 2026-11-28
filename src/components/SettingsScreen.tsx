@@ -1,3 +1,4 @@
+import SportsPro from './SportsPro';
 import ToolsCenter from './ToolsCenter';
 import LegalLinks from './LegalLinks';
 import React, { useEffect, useState } from 'react';
@@ -419,6 +420,7 @@ export default function SettingsScreen({
 <LegalLinks dark={dark} />
 
 <ToolsCenter dark={dark} />
+<SportsPro dark={dark} />
 </ScrollView>
 
         <Modal

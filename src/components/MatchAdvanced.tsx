@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MotionView, MotionBar, MotionScore } from './GolMotion';
 declare const process: {
   env: {
@@ -78,18 +79,27 @@ function valueOf(s: any) {
   return v == null ? '—' : String(v);
 }
 
+// GOLFLASH_PHOTOS_V5
+
 function playerPhoto(p: any) {
   const a = p?.athlete || p;
 
   return JSON.stringify({
     id: String(a?.id || ''),
-    name: a?.fullName || a?.displayName || a?.name || a?.shortName || '',
-    direct: a?.headshot?.href || a?.image?.href || '',
+    name: a?.fullName ||
+      a?.displayName ||
+      a?.name ||
+      a?.shortName || '',
+    direct: a?.headshot?.href ||
+      a?.image?.href ||
+      (typeof a?.headshot === 'string'
+        ? a.headshot : ''),
     league: p?.leagueCode || '',
-    ref: a?.$ref || ''
+    teamId: p?.photoTeamId || '',
+    birth: String(a?.dateOfBirth || '').slice(0, 10),
+    ref: a?.$ref || '',
   });
 }
-
 const imageCache = new Map<string, string[]>();
 const activeRequests = new Map<string, Promise<string[]>>();
 
@@ -151,189 +161,427 @@ async function requestJson(url: string, timeout = 8000) {
   }
 }
 
-async function wikiPhotos(id: string): Promise<string[]> {
-  if (!/^\d+$/.test(id)) return [];
+const PHOTO_PREFIX = '@golflash/photos-v5/';
 
-  const query = `
-    SELECT DISTINCT ?person ?photo WHERE {
-      ?person wdt:P3681 "${id}" .
-      ?person wdt:P18 ?photo .
-    } LIMIT 5
-  `;
+const rosterRequests =
+  new Map<string, Promise<any[]>>();
 
-  const url =
-    'https://query.wikidata.org/sparql?format=json&query=' +
-    encodeURIComponent(query);
+function uniquePhotos(values: any[]): string[] {
+  return [...new Set(
+    values
+      .filter(validImage)
+      .filter(v =>
+        !/silhouette|generic|headshot-placeholder|default/i.test(v)
+      )
+  )];
+}
 
-  const data = await requestJson(url, 15000);
+function collectAthletes(value: any): any[] {
+  if (!value) return [];
 
-  const rows = data?.results?.bindings || [];
-
-  const persons = new Set(
-    rows.map((r: any) => r?.person?.value)
-  );
-
-  if (persons.size !== 1) return [];
-
-  const images: string[] = [];
-
-  for (const row of rows) {
-    const value = row?.photo?.value;
-
-    if (typeof value !== 'string') continue;
-
-    try {
-      const file = decodeURIComponent(
-        value.split('/').pop() || ''
-      );
-
-      if (!file) continue;
-
-      images.push(
-        'https://commons.wikimedia.org/wiki/Special:FilePath/' +
-        encodeURIComponent(file) +
-        '?width=320'
-      );
-    } catch {
-      // Skip invalid filenames.
-    }
+  if (Array.isArray(value)) {
+    return value.flatMap(collectAthletes);
   }
 
-  return images;
+  if (value.athlete) {
+    return collectAthletes(value.athlete);
+  }
+
+  if (value.items) {
+    return collectAthletes(value.items);
+  }
+
+  if (value.athletes) {
+    return collectAthletes(value.athletes);
+  }
+
+  return value.id ? [value] : [];
+}
+
+async function teamAthletes(
+  league: string,
+  teamId: string
+): Promise<any[]> {
+
+  if (
+    !/^[a-z0-9.]+$/i.test(league) ||
+    !/^\d+$/.test(teamId)
+  ) return [];
+
+  const key = league + ':' + teamId;
+
+  const current = rosterRequests.get(key);
+
+  if (current) return current;
+
+  const promise = requestJson(
+    BASE + '/' + league +
+    '/teams/' + teamId + '/roster',
+    10000
+  ).then(data => {
+    return collectAthletes(
+      data?.athletes || data?.roster
+    );
+  }).catch(() => []);
+
+  rosterRequests.set(key, promise);
+
+  const result = await promise;
+
+  if (!result.length) {
+    rosterRequests.delete(key);
+  }
+
+  if (rosterRequests.size > 60) {
+    const first = rosterRequests.keys().next().value;
+    if (first !== undefined) rosterRequests.delete(first);
+  }
+
+  return result;
+}
+
+type WikiResolver = (photos: string[]) => void;
+
+const wikiQueue = new Map<string, WikiResolver[]>();
+
+let wikiTimer: ReturnType<typeof setTimeout> | undefined;
+
+async function flushWiki() {
+
+  wikiTimer = undefined;
+
+  const pending = [...wikiQueue.entries()];
+
+  wikiQueue.clear();
+
+  for (let start = 0; start < pending.length; start += 40) {
+
+    const batch = pending.slice(start, start + 40);
+
+    try {
+      const values = batch
+        .map(([id]) => '"' + id + '"')
+        .join(' ');
+
+      const query = `
+        SELECT DISTINCT ?espn ?person ?photo WHERE {
+          VALUES ?espn { ${values} }
+          ?person wdt:P3681 ?espn .
+          OPTIONAL { ?person wdt:P18 ?photo . }
+        }
+      `;
+
+      const data = await requestJson(
+        'https://query.wikidata.org/sparql?format=json&query=' +
+        encodeURIComponent(query),
+        15000
+      );
+
+      const rows = Array.isArray(data?.results?.bindings)
+        ? data.results.bindings : [];
+
+      for (const [id, callbacks] of batch) {
+
+        const matches = rows.filter(
+          (row: any) => row?.espn?.value === id
+        );
+
+        const persons = new Set(
+          matches.map((row: any) => row?.person?.value)
+        );
+
+        const photos: string[] = [];
+
+        if (persons.size === 1) {
+
+          for (const row of matches) {
+
+            try {
+              const file = decodeURIComponent(
+                String(row?.photo?.value || '')
+                  .split('/').pop() || ''
+              );
+
+              if (!file) continue;
+
+              photos.push(
+                'https://commons.wikimedia.org/wiki/Special:FilePath/' +
+                encodeURIComponent(file) +
+                '?width=240'
+              );
+            } catch {}
+          }
+        }
+
+        callbacks.forEach(resolve =>
+          resolve(uniquePhotos(photos).slice(0, 3))
+        );
+      }
+
+    } catch {
+
+      batch.forEach(([, callbacks]) =>
+        callbacks.forEach(resolve => resolve([]))
+      );
+    }
+  }
+}
+
+function wikiPhotos(id: string): Promise<string[]> {
+
+  if (!/^\d+$/.test(id)) {
+    return Promise.resolve([]);
+  }
+
+  return new Promise(resolve => {
+
+    const callbacks = wikiQueue.get(id) || [];
+
+    callbacks.push(resolve);
+
+    wikiQueue.set(id, callbacks);
+
+    if (!wikiTimer) {
+      wikiTimer = setTimeout(() => {
+        void flushWiki();
+      }, 250);
+    }
+  });
 }
 
 async function sportsDbPhotos(
   id: string,
-  name: string
+  name: string,
+  birth: string
 ): Promise<string[]> {
 
   if (!name || /^[A-Z]\.\s*/.test(name)) return [];
 
-  const url =
+  const data = await requestJson(
     'https://www.thesportsdb.com/api/v1/json/123/searchplayers.php?p=' +
-    encodeURIComponent(name);
-
-  const data = await requestJson(url);
+    encodeURIComponent(name),
+    10000
+  );
 
   const players = Array.isArray(data?.player)
     ? data.player : [];
 
-  const exact = players.filter((p: any) =>
-    p.strSport === 'Soccer' &&
-    normalized(p.strPlayer) === normalized(name)
-  );
+  const exact = players.filter((p: any) => {
 
-  const sameId = players.filter((p: any) =>
-    p.strSport === 'Soccer' &&
-    id &&
-    String(p.idESPN || '') === id
-  );
+    if (p.strSport !== 'Soccer') return false;
 
-  const match = sameId.length === 1
-    ? sameId[0]
-    : exact.length === 1
-      ? exact[0] : null;
+    const sameId =
+      id && String(p.idESPN || '') === id;
 
-  if (!match) return [];
+    const samePerson =
+      birth &&
+      normalized(p.strPlayer) === normalized(name) &&
+      String(p.dateBorn || '').slice(0, 10) === birth;
 
-  return [
-    match.strCutout,
-    match.strThumb,
-    match.strRender,
-    match.strRender
-  ].filter(validImage);
+    return sameId || samePerson;
+  });
+
+  if (exact.length !== 1) return [];
+
+  const p = exact[0];
+
+  return uniquePhotos([
+    p.strCutout,
+    p.strThumb,
+    p.strRender,
+  ]);
 }
 
-async function additionalPhotos(info: any): Promise<string[]> {
+function athletePhotos(a: any): string[] {
+
+  return uniquePhotos([
+    a?.headshot?.href,
+    typeof a?.headshot === 'string' ? a.headshot : '',
+    a?.image?.href,
+    a?.images?.[0]?.href,
+  ]);
+}
+
+async function additionalPhotos(
+  info: any
+): Promise<string[]> {
+
   const id = String(info.id || '');
-  const key = id || normalized(info.name);
 
-  if (!key) return [];
+  if (!/^\d+$/.test(id)) return [];
 
-  if (imageCache.has(key)) {
-    return imageCache.get(key) || [];
-  }
+  const key = PHOTO_PREFIX + id;
 
   const existing = activeRequests.get(key);
 
   if (existing) return existing;
 
-  const task = limited(async () => {
-    const photos: string[] = [];
+  if (imageCache.has(key)) {
+    return imageCache.get(key) || [];
+  }
 
-    let name = String(info.name || '');
-    let birth = '';
+  const task = (async (): Promise<string[]> => {
 
-    if (/^\d+$/.test(id)) {
-      const ref = typeof info.ref === 'string' &&
-        /^https?:\/\/sports\.core\.api\.espn\.com\//i.test(info.ref)
-        ? info.ref.replace(/^http:/, 'https:')
-        : '';
+    try {
+      const raw = await AsyncStorage.getItem(key);
 
-      const profileUrl = ref || (
-        'https://sports.core.api.espn.com/v2/sports/soccer/leagues/' +
-        encodeURIComponent(info.league || 'eng.1') +
-        '/athletes/' + encodeURIComponent(id)
-      );
+      if (raw) {
+        const saved = JSON.parse(raw);
 
-      const profile = await requestJson(profileUrl, 5000);
-
-      if (profile) {
-        birth = String(profile.dateOfBirth || '').slice(0, 10);
-        name = profile.fullName ||
-          profile.displayName ||
-          name;
-
-        if (validImage(profile.headshot?.href)) {
-          photos.push(profile.headshot.href);
+        if (
+          Array.isArray(saved.photos) &&
+          saved.photos.length &&
+          Date.now() - Number(saved.time) < 7 * 86400000
+        ) {
+          return uniquePhotos(saved.photos);
         }
       }
-    }
+    } catch {}
 
-    const results = await Promise.all([
-      wikiPhotos(id).catch(() => []),
-      sportsDbPhotos(id, name).catch(() => [])
+    const [roster, wiki] = await Promise.all([
+      teamAthletes(
+        String(info.league || ''),
+        String(info.teamId || '')
+      ),
+      wikiPhotos(id),
     ]);
 
-    photos.push(...results[0], ...results[1]);
+    const athlete = roster.find(
+      p => String(p.id) === id
+    );
 
-    if (birth && name) {
-      try {
-        const server: string = "";
+    const teamImages = athletePhotos(athlete);
 
-        if (server) {
-          const extra = await requestJson(
-            server + '/photo?name=' +
+    let name = String(
+      athlete?.fullName ||
+      athlete?.displayName ||
+      info.name || ''
+    );
+
+    let birth = String(
+      athlete?.dateOfBirth ||
+      info.birth || ''
+    ).slice(0, 10);
+
+    let profileImages: string[] = [];
+    let extraImages: string[] = [];
+
+    if (!wiki.length && !teamImages.length) {
+
+      await limited(async () => {
+
+        const league =
+          /^[a-z0-9.]+$/i.test(info.league || '')
+            ? info.league : 'eng.1';
+
+        const ref =
+          typeof info.ref === 'string' &&
+          /^https?:\/\/sports\.core\.api\.espn\.com\//i.test(info.ref)
+            ? info.ref.replace(/^http:/, 'https:')
+            : '';
+
+        const profile = await requestJson(
+          ref ||
+          'https://sports.core.api.espn.com/v2/sports/soccer/leagues/' +
+          league + '/athletes/' + id,
+          7000
+        );
+
+        if (
+          profile &&
+          String(profile.id || '') === id
+        ) {
+
+          name = profile.fullName ||
+            profile.displayName || name;
+
+          birth = String(
+            profile.dateOfBirth || birth
+          ).slice(0, 10);
+
+          profileImages = athletePhotos(profile);
+        }
+
+        extraImages = await sportsDbPhotos(
+          id,
+          name,
+          birth
+        ).catch(() => []);
+
+        // Optional private photo server.
+        // Never include an API key in the mobile app.
+
+        const server =
+          process.env.EXPO_PUBLIC_PHOTO_SERVER || '';
+
+        if (
+          /^https:\/\//i.test(server) &&
+          birth &&
+          name
+        ) {
+
+          const result = await requestJson(
+            server.replace(/\/+$/, '') +
+            '/photo?name=' +
             encodeURIComponent(name) +
-            '&birth=' + encodeURIComponent(birth),
+            '&birth=' +
+            encodeURIComponent(birth),
             10000
           );
 
-          if (Array.isArray(extra?.photos)) {
-            photos.push(...extra.photos.filter(validImage));
+          if (Array.isArray(result?.photos)) {
+            extraImages.push(
+              ...result.photos.filter(validImage)
+            );
           }
         }
-      } catch {
-        // Preserve existing sources.
-      }
+      });
     }
 
-    const final = [...new Set(photos.filter(validImage))];
+    const final = uniquePhotos([
+      ...wiki,
+      ...teamImages,
+      ...profileImages,
+      ...extraImages,
+    ]);
 
-    if (final.length) imageCache.set(key, final);
+    if (final.length) {
+
+      await AsyncStorage.setItem(
+        key,
+        JSON.stringify({
+          time: Date.now(),
+          photos: final,
+        })
+      ).catch(() => {});
+    }
 
     return final;
-  });
+  })();
 
   activeRequests.set(key, task);
 
   try {
-    return await task;
+
+    const result = await task;
+
+    if (result.length) {
+
+      imageCache.set(key, result);
+
+      if (imageCache.size > 1000) {
+        const first = imageCache.keys().next().value;
+        if (first !== undefined) imageCache.delete(first);
+      }
+    }
+
+    return result;
+
   } finally {
+
     activeRequests.delete(key);
   }
 }
-
 function PhotoImage({
   urls,
   size,
@@ -383,15 +631,22 @@ function PhotoImage({
   );
 }
 
-function PlayerAvatar({
+export function PlayerAvatar({
   uri,
-  size
+  size,
 }: {
   uri?: string;
   size: number;
 }) {
-  const [extra, setExtra] = useState<string[]>([]);
-  const [fallback, setFallback] = useState(false);
+
+  const [resolved, setResolved] =
+    useState<string[]>([]);
+
+  const [failed, setFailed] =
+    useState<string[]>([]);
+
+  const [loading, setLoading] =
+    useState(true);
 
   let info: any = {};
 
@@ -401,52 +656,105 @@ function PlayerAvatar({
     info = { direct: uri };
   }
 
-  const urls: string[] = [];
-
-  if (validImage(info.direct)) {
-    urls.push(info.direct);
-  }
-
-  if (/^\d+$/.test(String(info.id || ''))) {
-    urls.push(
-      `https://a.espncdn.com/i/headshots/soccer/players/full/${info.id}.png`
-    );
-
-    urls.push(
-      `https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/${info.id}.png&w=256&h=256&scale=crop`
-    );
-  }
+  const id = String(info.id || '');
 
   useEffect(() => {
-    if (!fallback) return;
 
     let alive = true;
 
-    additionalPhotos(info).then(photos => {
-      if (alive) setExtra(photos);
-    }).catch(() => {});
+    setResolved([]);
+    setFailed([]);
+    setLoading(true);
+
+    let parsed: any = {};
+
+    try {
+      parsed = JSON.parse(uri || '{}');
+    } catch {
+      parsed = { direct: uri };
+    }
+
+    additionalPhotos(parsed)
+      .then(photos => {
+        if (alive) setResolved(photos);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
 
     return () => {
       alive = false;
     };
-  }, [uri, fallback]);
 
-  const sources = [...new Set([
-    ...urls,
-    ...extra
-  ])];
+  }, [uri]);
+
+  const candidates = uniquePhotos([
+    ...resolved,
+    info.direct,
+    /^\d+$/.test(id)
+      ? 'https://a.espncdn.com/i/headshots/soccer/players/full/' +
+        id + '.png'
+      : '',
+  ]);
+
+  const current = candidates.find(
+    photo => !failed.includes(photo)
+  );
 
   return (
-    <PhotoImage
-      key={uri}
-      urls={sources}
-      size={size}
-      player
-      exhausted={() => setFallback(true)}
-    />
+    <View style={{
+      width: size,
+      height: size,
+      borderRadius: size / 2,
+      backgroundColor: '#263A2B',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: '#526C53',
+    }}>
+
+      <Ionicons
+        name="person-outline"
+        size={size * 0.57}
+        color="#A8B9A8"
+      />
+
+      {current ? (
+        <Image
+          key={current}
+          source={{ uri: current }}
+          resizeMode="contain"
+          fadeDuration={150}
+          onError={() => {
+            setFailed(old =>
+              old.includes(current)
+                ? old : [...old, current]
+            );
+          }}
+          style={{
+            position: 'absolute',
+            width: size - 2,
+            height: size - 2,
+            borderRadius: size / 2,
+          }}
+        />
+      ) : loading ? (
+        <ActivityIndicator
+          size="small"
+          color="#76E536"
+          style={{
+            position: 'absolute',
+            bottom: 2,
+            right: 2,
+          }}
+        />
+      ) : null}
+
+    </View>
   );
 }
-
 function Avatar({
   uri,
   size = 38,
@@ -854,7 +1162,7 @@ export default function MatchAdvanced({ match }: { match: Match }) {
     ...r,
     roster: arr(r?.roster).map(p => ({
       ...p,
-      leagueCode: match.leagueCode
+      leagueCode: match.leagueCode, photoTeamId: String(r?.team?.id || "")
     }))
   }));
   const homeRoster = rosters.find(r =>

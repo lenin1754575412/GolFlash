@@ -1,3 +1,4 @@
+import { PlayerAvatar } from './components/MatchAdvanced';
 import GoalAlerts from './components/GoalAlerts';
 import LiveCarousel from './components/LiveCarousel';
 import LiveTV from './components/LiveTV';
@@ -329,7 +330,16 @@ export default function App() {
           {rosterError ? <Text style={{ color: C.subtle, padding: 20 }}>{rosterError}</Text> : null}
           <ScrollView contentContainerStyle={{ padding: 16 }}>
             {teamRoster?.players.map(player => <View key={player.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 12, borderBottomWidth: 1, borderColor: C.line }}>
-              {player.image ? <Image source={{ uri: player.image }} style={{ width: 52, height: 52, borderRadius: 26 }} /> : <Ionicons name="person-circle-outline" size={52} color={C.subtle}/>}
+              <PlayerAvatar
+  key={player.id}
+  size={52}
+  uri={JSON.stringify({
+    id: player.id,
+    name: player.name,
+    direct: player.image || '',
+    league: selected?.leagueCode || '',
+  })}
+/>
               <View style={{ flex: 1 }}><Text style={{ color: C.white, fontSize: 16 }}>{player.name}</Text><Text style={{ color: C.subtle }}>{player.position}{player.number ? ` · #${player.number}` : ''}{player.age ? ` · ${player.age} años` : ''}</Text></View>
             </View>)}
           </ScrollView>
