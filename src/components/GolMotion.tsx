@@ -1,3 +1,5 @@
+// GOLFLASH_GLOBAL_THEME
+import { useGolTheme, gfStyle, gfColor, gfColors } from "../services/globalTheme";
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -11,30 +13,69 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
-function useReducedMotion() {
-  const [reduced, setReduced] = useState(false);
 
-  useEffect(() => {
-    let active = true;
+let gfReducedMotion = false;
+
+let gfMotionSubscription:
+  { remove: () => void } | undefined;
+
+const gfMotionListeners =
+  new Set<() => void>();
+
+function gfMotionSnapshot() {
+  return gfReducedMotion;
+}
+
+function gfNotifyMotion(value: boolean) {
+
+  if (gfReducedMotion === value) return;
+
+  gfReducedMotion = value;
+
+  gfMotionListeners.forEach(
+    listener => listener()
+  );
+}
+
+function gfSubscribeMotion(
+  listener: () => void
+) {
+
+  gfMotionListeners.add(listener);
+
+  if (!gfMotionSubscription) {
 
     AccessibilityInfo.isReduceMotionEnabled()
-      .then(value => {
-        if (active) setReduced(value);
-      })
+      .then(gfNotifyMotion)
       .catch(() => {});
 
-    const listener = AccessibilityInfo.addEventListener(
-      'reduceMotionChanged',
-      setReduced
-    );
+    gfMotionSubscription =
+      AccessibilityInfo.addEventListener(
+        'reduceMotionChanged',
+        gfNotifyMotion
+      );
+  }
 
-    return () => {
-      active = false;
-      listener.remove();
-    };
-  }, []);
+  return () => {
 
-  return reduced;
+    gfMotionListeners.delete(listener);
+
+    if (!gfMotionListeners.size) {
+
+      gfMotionSubscription?.remove();
+
+      gfMotionSubscription = undefined;
+    }
+  };
+}
+
+function useReducedMotion() {
+
+  return React.useSyncExternalStore(
+    gfSubscribeMotion,
+    gfMotionSnapshot,
+    gfMotionSnapshot
+  );
 }
 
 export function MotionView({
@@ -49,24 +90,12 @@ export function MotionView({
   distance?: number;
   horizontal?: boolean;
 }) {
-  const value = useRef(new Animated.Value(0)).current;
-  const reduced = useReducedMotion();
+  const gfDark = useGolTheme();
 
-  useEffect(() => {
-    value.setValue(reduced ? 1 : 0);
+  const value = useRef(new Animated.Value(1)).current;
+  
 
-    const animation = Animated.timing(value, {
-      toValue: 1,
-      duration: reduced ? 0 : 320,
-      delay: reduced ? 0 : delay,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true
-    });
-
-    animation.start();
-
-    return () => animation.stop();
-  }, [value, delay, reduced]);
+  
 
   const position = value.interpolate({
     inputRange: [0, 1],
@@ -76,7 +105,7 @@ export function MotionView({
   return (
     <Animated.View
       {...props}
-      style={[
+      style={gfStyle([
         style,
         {
           opacity: value,
@@ -84,7 +113,7 @@ export function MotionView({
             ? [{ translateX: position }]
             : [{ translateY: position }]
         }
-      ]}
+      ], gfDark)}
     >
       {children}
     </Animated.View>
@@ -100,6 +129,8 @@ export function MotionPressable({
   feedback = false,
   ...props
 }: PressableProps & { feedback?: boolean }) {
+  const gfDark = useGolTheme();
+
   const scale = useRef(new Animated.Value(1)).current;
   const reduced = useReducedMotion();
 
@@ -108,14 +139,14 @@ export function MotionPressable({
       toValue: reduced ? 1 : toValue,
       speed: 30,
       bounciness: 5,
-      useNativeDriver: true
+      isInteraction: false, useNativeDriver: true
     }).start();
   };
 
   return (
     <Pressable
       {...props}
-      style={style}
+      style={gfStyle(style, gfDark)}
       onPressIn={event => {
         animate(0.97);
         onPressIn?.(event);
@@ -132,7 +163,7 @@ export function MotionPressable({
       }}
     >
       {state => (
-        <Animated.View style={{ transform: [{ scale }] }}>
+        <Animated.View style={gfStyle({ transform: [{ scale }] }, gfDark)}>
           {typeof children === 'function'
             ? children(state)
             : children}
@@ -149,6 +180,8 @@ export function MotionScore({
   value: string;
   style?: TextProps['style'];
 }) {
+  const gfDark = useGolTheme();
+
   const scale = useRef(new Animated.Value(1)).current;
   const previous = useRef(value);
   const reduced = useReducedMotion();
@@ -166,14 +199,14 @@ export function MotionScore({
     const animation = Animated.sequence([
       Animated.timing(scale, {
         toValue: 1.18,
-        duration: 150,
-        useNativeDriver: true
+        duration: 100,
+        isInteraction: false, useNativeDriver: true
       }),
       Animated.spring(scale, {
         toValue: 1,
-        speed: 14,
-        bounciness: 7,
-        useNativeDriver: true
+        speed: 25,
+        bounciness: 3,
+        isInteraction: false, useNativeDriver: true
       })
     ]);
 
@@ -184,7 +217,7 @@ export function MotionScore({
 
   return (
     <Animated.Text
-      style={[style, { transform: [{ scale }] }]}
+      style={gfStyle([style, { transform: [{ scale }] }], gfDark)}
     >
       {value}
     </Animated.Text>
@@ -196,6 +229,8 @@ export function LivePulse({
 }: {
   style?: TextProps['style'];
 }) {
+  const gfDark = useGolTheme();
+
   const opacity = useRef(new Animated.Value(1)).current;
   const reduced = useReducedMotion();
 
@@ -210,12 +245,12 @@ export function LivePulse({
         Animated.timing(opacity, {
           toValue: 0.45,
           duration: 850,
-          useNativeDriver: true
+          isInteraction: false, useNativeDriver: true
         }),
         Animated.timing(opacity, {
           toValue: 1,
           duration: 850,
-          useNativeDriver: true
+          isInteraction: false, useNativeDriver: true
         })
       ])
     );
@@ -226,7 +261,7 @@ export function LivePulse({
   }, [opacity, reduced]);
 
   return (
-    <Animated.Text style={[style, { opacity }]}>
+    <Animated.Text style={gfStyle([style, { opacity }], gfDark)}>
       {'\u25CF EN VIVO'}
     </Animated.Text>
   );
@@ -241,6 +276,8 @@ export function MotionBar({
   color: string;
   reverse?: boolean;
 }) {
+  const gfDark = useGolTheme();
+
   const value = useRef(new Animated.Value(0)).current;
   const reduced = useReducedMotion();
 
@@ -251,9 +288,9 @@ export function MotionBar({
 
     const animation = Animated.timing(value, {
       toValue: target,
-      duration: reduced ? 0 : 650,
+      duration: reduced ? 0 : 160,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: false
+      isInteraction: false, useNativeDriver: false
     });
 
     animation.start();
@@ -263,7 +300,7 @@ export function MotionBar({
 
   return (
     <Animated.View
-      style={{
+      style={gfStyle({
         width: value.interpolate({
           inputRange: [0, 100],
           outputRange: ['0%', '100%']
@@ -272,7 +309,7 @@ export function MotionBar({
         backgroundColor: color,
         borderRadius: 8,
         alignSelf: reverse ? 'flex-end' : 'flex-start'
-      }}
+      }, gfDark)}
     />
   );
 }
@@ -286,6 +323,8 @@ export function MotionDrawer({
   style?: ViewStyle;
   contentContainerStyle?: ViewStyle;
 }) {
+  const gfDark = useGolTheme();
+
   const slide = useRef(new Animated.Value(-300)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const reduced = useReducedMotion();
@@ -294,14 +333,14 @@ export function MotionDrawer({
     const animation = Animated.parallel([
       Animated.timing(slide, {
         toValue: 0,
-        duration: reduced ? 0 : 300,
+        duration: reduced ? 0 : 130,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true
+        isInteraction: false, useNativeDriver: true
       }),
       Animated.timing(opacity, {
         toValue: 1,
-        duration: reduced ? 0 : 220,
-        useNativeDriver: true
+        duration: reduced ? 0 : 100,
+        isInteraction: false, useNativeDriver: true
       })
     ]);
 
@@ -312,11 +351,11 @@ export function MotionDrawer({
 
   return (
     <Animated.ScrollView
-      style={[
+      style={gfStyle([
         style,
         { opacity, transform: [{ translateX: slide }] }
-      ]}
-      contentContainerStyle={contentContainerStyle}
+      ], gfDark)}
+      contentContainerStyle={gfStyle(contentContainerStyle, gfDark)}
     >
       {children}
     </Animated.ScrollView>

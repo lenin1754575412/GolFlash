@@ -1,3 +1,5 @@
+// GOLFLASH_GLOBAL_THEME
+import { useGolTheme, gfStyle, gfColor, gfColors } from "../services/globalTheme";
 import React, { useEffect, useState } from 'react';
 import {
   Modal,
@@ -43,6 +45,8 @@ export default function DatePicker({
   onClose,
   onConfirm,
 }: Props) {
+  const gfDark = useGolTheme();
+
   const [selected, setSelected] = useState(value);
   const [year, setYear] = useState(2026);
   const [month, setMonth] = useState(10);
@@ -110,46 +114,46 @@ export default function DatePicker({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <View style={gfStyle(styles.overlay, gfDark)}>
         <Pressable
-          style={StyleSheet.absoluteFill}
+          style={gfStyle(StyleSheet.absoluteFill, gfDark)}
           onPress={onClose}
         />
 
-        <View style={styles.card}>
-          <View style={styles.header}>
-            <View style={styles.headerRow}>
-              <Text style={styles.caption}>
+        <View style={gfStyle(styles.card, gfDark)}>
+          <View style={gfStyle(styles.header, gfDark)}>
+            <View style={gfStyle(styles.headerRow, gfDark)}>
+              <Text style={gfStyle(styles.caption, gfDark)}>
                 SELECCIONA UNA FECHA
               </Text>
 
               <Pressable onPress={onClose} hitSlop={12}>
-                <Ionicons name="close" size={24} color="#FFFFFF" />
+                <Ionicons name="close" size={24} color={gfColor("#FFFFFF", gfDark, "text")} />
               </Pressable>
             </View>
 
-            <Text style={styles.selectedDate}>
+            <Text style={gfStyle(styles.selectedDate, gfDark)}>
               {headerDate}
             </Text>
 
-            <Text style={styles.timezone}>
+            <Text style={gfStyle(styles.timezone, gfDark)}>
               Fechas y horarios de Peru (UTC-5)
             </Text>
           </View>
 
-          <View style={styles.body}>
-            <View style={styles.navigation}>
+          <View style={gfStyle(styles.body, gfDark)}>
+            <View style={gfStyle(styles.navigation, gfDark)}>
               <Pressable
-                style={styles.monthButton}
+                style={gfStyle(styles.monthButton, gfDark)}
                 onPress={() => setShowYears(!showYears)}
               >
-                <Text style={styles.monthLabel}>
+                <Text style={gfStyle(styles.monthLabel, gfDark)}>
                   {MONTHS[month].toUpperCase()} DE {year}
                 </Text>
 
                 <Ionicons
                   name={showYears ? 'chevron-up' : 'chevron-down'}
-                  color="#BDBDBD"
+                  color={gfColor("#BDBDBD", gfDark, "text")}
                   size={17}
                 />
               </Pressable>
@@ -157,26 +161,26 @@ export default function DatePicker({
               {!showYears && (
                 <>
                   <Pressable
-                    style={styles.arrow}
+                    style={gfStyle(styles.arrow, gfDark)}
                     onPress={() => changeMonth(-1)}
                     disabled={year === MIN_YEAR && month === 0}
                   >
                     <Ionicons
                       name="chevron-back"
                       size={23}
-                      color="#FFFFFF"
+                      color={gfColor("#FFFFFF", gfDark, "text")}
                     />
                   </Pressable>
 
                   <Pressable
-                    style={styles.arrow}
+                    style={gfStyle(styles.arrow, gfDark)}
                     onPress={() => changeMonth(1)}
                     disabled={year === MAX_YEAR && month === 11}
                   >
                     <Ionicons
                       name="chevron-forward"
                       size={23}
-                      color="#FFFFFF"
+                      color={gfColor("#FFFFFF", gfDark, "text")}
                     />
                   </Pressable>
                 </>
@@ -185,26 +189,26 @@ export default function DatePicker({
 
             {showYears ? (
               <ScrollView
-                style={styles.yearsScroll}
-                contentContainerStyle={styles.yearsGrid}
+                style={gfStyle(styles.yearsScroll, gfDark)}
+                contentContainerStyle={gfStyle(styles.yearsGrid, gfDark)}
               >
                 {years.map(item => (
                   <Pressable
                     key={item}
-                    style={[
+                    style={gfStyle([
                       styles.yearButton,
                       year === item && styles.yearActive,
-                    ]}
+                    ], gfDark)}
                     onPress={() => {
                       setYear(item);
                       setShowYears(false);
                     }}
                   >
                     <Text
-                      style={[
+                      style={gfStyle([
                         styles.yearText,
                         year === item && styles.activeText,
-                      ]}
+                      ], gfDark)}
                     >
                       {item}
                     </Text>
@@ -213,16 +217,16 @@ export default function DatePicker({
               </ScrollView>
             ) : (
               <View>
-                <View style={styles.weekRow}>
+                <View style={gfStyle(styles.weekRow, gfDark)}>
                   {WEEK.map((label, i) => (
-                    <Text key={i} style={styles.weekDay}>
+                    <Text key={i} style={gfStyle(styles.weekDay, gfDark)}>
                       {label}
                     </Text>
                   ))}
                 </View>
 
                 {Array.from({ length: 6 }, (_, row) => (
-                  <View key={row} style={styles.weekRow}>
+                  <View key={row} style={gfStyle(styles.weekRow, gfDark)}>
                     {cells.slice(row * 7, row * 7 + 7).map((day, i) => {
                       const key = day
                         ? dateKey(year, month, day)
@@ -232,25 +236,25 @@ export default function DatePicker({
                       const current = key === today;
 
                       return (
-                        <View key={i} style={styles.dayCell}>
+                        <View key={i} style={gfStyle(styles.dayCell, gfDark)}>
                           {day !== null && (
                             <Pressable
                               accessibilityRole="button"
                               accessibilityState={{ selected: active }}
                               accessibilityLabel={key}
                               onPress={() => setSelected(key)}
-                              style={[
+                              style={gfStyle([
                                 styles.dayButton,
                                 current && styles.today,
                                 active && styles.activeDay,
-                              ]}
+                              ], gfDark)}
                             >
                               <Text
-                                style={[
+                                style={gfStyle([
                                   styles.dayText,
                                   current && styles.todayText,
                                   active && styles.activeText,
-                                ]}
+                                ], gfDark)}
                               >
                                 {day}
                               </Text>
@@ -264,19 +268,19 @@ export default function DatePicker({
               </View>
             )}
 
-            <View style={styles.actions}>
+            <View style={gfStyle(styles.actions, gfDark)}>
               <Pressable
-                style={styles.action}
+                style={gfStyle(styles.action, gfDark)}
                 onPress={goToday}
               >
-                <Text style={styles.actionText}>HOY</Text>
+                <Text style={gfStyle(styles.actionText, gfDark)}>HOY</Text>
               </Pressable>
 
               <Pressable
-                style={styles.action}
+                style={gfStyle(styles.action, gfDark)}
                 onPress={() => onConfirm(selected)}
               >
-                <Text style={styles.actionText}>CONFIRMAR</Text>
+                <Text style={gfStyle(styles.actionText, gfDark)}>CONFIRMAR</Text>
               </Pressable>
             </View>
           </View>

@@ -12,6 +12,23 @@ export let preferences: Preferences = {
   timezone: 'America/Lima',
 };
 
+
+const themeListeners = new Set<() => void>();
+
+export function subscribePreferences(
+  listener: () => void
+) {
+  themeListeners.add(listener);
+
+  return () => {
+    themeListeners.delete(listener);
+  };
+}
+
+function notifyPreferences() {
+  themeListeners.forEach(listener => listener());
+}
+
 const KEY = '@golflash/preferences-v2';
 
 export async function loadPreferences() {
@@ -22,12 +39,14 @@ export async function loadPreferences() {
       ...JSON.parse(saved),
     };
   }
+  notifyPreferences();
   return preferences;
 }
 
 export async function savePreferences(value: Preferences) {
   preferences = value;
   await AsyncStorage.setItem(KEY, JSON.stringify(value));
+  notifyPreferences();
 }
 
 export function getTimeZone(): string {

@@ -1,3 +1,5 @@
+// GOLFLASH_GLOBAL_THEME
+import { useGolTheme, gfStyle, gfColor, gfColors } from "../services/globalTheme";
 import TVPlayer from './TVPlayer';
 import React, { useState } from 'react';
 import {
@@ -60,6 +62,8 @@ const CHANNELS = [
 ];
 
 export default function LiveTV() {
+  const gfDark = useGolTheme();
+
   const [visible, setVisible] = useState(false);
 
   async function watch(url: string) {
@@ -76,21 +80,21 @@ export default function LiveTV() {
   return (
     <>
       <Pressable
-        style={s.banner}
+        style={gfStyle(s.banner, gfDark)}
         onPress={() => setVisible(true)}
       >
         <Ionicons
           name="tv-outline"
           size={24}
-          color={GREEN}
+          color={gfColor(GREEN, gfDark, "text")}
         />
 
-        <View style={{ flex: 1 }}>
-          <Text style={s.bannerTitle}>
+        <View style={gfStyle({ flex: 1 }, gfDark)}>
+          <Text style={gfStyle(s.bannerTitle, gfDark)}>
             GOLFLASH TV
           </Text>
 
-          <Text style={s.subtitle}>
+          <Text style={gfStyle(s.subtitle, gfDark)}>
             Futbol y transmisiones deportivas
           </Text>
         </View>
@@ -98,7 +102,7 @@ export default function LiveTV() {
         <Ionicons
           name="play-circle"
           size={29}
-          color={GREEN}
+          color={gfColor(GREEN, gfDark, "text")}
         />
       </Pressable>
 
@@ -107,8 +111,8 @@ export default function LiveTV() {
         animationType="slide"
         onRequestClose={() => setVisible(false)}
       >
-        <SafeAreaView style={s.root}>
-          <View style={s.header}>
+        <SafeAreaView style={gfStyle(s.root, gfDark)}>
+          <View style={gfStyle(s.header, gfDark)}>
             <Pressable
               onPress={() => setVisible(false)}
               hitSlop={12}
@@ -116,12 +120,12 @@ export default function LiveTV() {
               <Ionicons
                 name="arrow-back"
                 size={26}
-                color="#FFFFFF"
+                color={gfColor("#FFFFFF", gfDark, "text")}
               />
             </Pressable>
 
-            <Text style={s.brand}>
-              GOL<Text style={{ color: GREEN }}>
+            <Text style={gfStyle(s.brand, gfDark)}>
+              GOL<Text style={gfStyle({ color: GREEN }, gfDark)}>
                 FLASH TV
               </Text>
             </Text>
@@ -129,83 +133,83 @@ export default function LiveTV() {
             <Ionicons
               name="tv-outline"
               size={25}
-              color={GREEN}
+              color={gfColor(GREEN, gfDark, "text")}
             />
           </View>
 
           <ScrollView
-            contentContainerStyle={s.content}
+            contentContainerStyle={gfStyle(s.content, gfDark)}
           >
 {visible ? <TVPlayer /> : null}
 
-            <View style={s.hero}>
+            <View style={gfStyle(s.hero, gfDark)}>
               <Ionicons
                 name="play-circle-outline"
                 size={65}
-                color={GREEN}
+                color={gfColor(GREEN, gfDark, "text")}
               />
 
-              <Text style={s.heroTitle}>
+              <Text style={gfStyle(s.heroTitle, gfDark)}>
                 Futbol en vivo
               </Text>
 
-              <Text style={s.subtitle}>
+              <Text style={gfStyle(s.subtitle, gfDark)}>
                 Plataformas oficiales de transmision
               </Text>
             </View>
 
-            <Text style={s.section}>
+            <Text style={gfStyle(s.section, gfDark)}>
               PLATAFORMAS DEPORTIVAS
             </Text>
 
             {CHANNELS.map(channel => (
               <Pressable
                 key={channel.id}
-                style={s.channel}
+                style={gfStyle(s.channel, gfDark)}
                 onPress={() => watch(channel.url)}
               >
-                <View style={[
+                <View style={gfStyle([
                   s.logo,
                   { backgroundColor: channel.color },
-                ]}>
-                  <Text style={s.logoText}>
+                ], gfDark)}>
+                  <Text style={gfStyle(s.logoText, gfDark)}>
                     {channel.label}
                   </Text>
                 </View>
 
-                <View style={{ flex: 1 }}>
-                  <Text style={s.channelTitle}>
+                <View style={gfStyle({ flex: 1 }, gfDark)}>
+                  <Text style={gfStyle(s.channelTitle, gfDark)}>
                     {channel.name}
                   </Text>
 
-                  <Text style={s.subtitle}>
+                  <Text style={gfStyle(s.subtitle, gfDark)}>
                     {channel.description}
                   </Text>
                 </View>
 
                 <Ionicons
                   name="play-circle-outline"
-                  color={GREEN}
+                  color={gfColor(GREEN, gfDark, "text")}
                   size={29}
                 />
               </Pressable>
             ))}
 
-            <View style={s.notice}>
+            <View style={gfStyle(s.notice, gfDark)}>
               <Ionicons
                 name="information-circle-outline"
                 size={23}
-                color={GREEN}
+                color={gfColor(GREEN, gfDark, "text")}
               />
 
-              <Text style={s.noticeText}>
+              <Text style={gfStyle(s.noticeText, gfDark)}>
                 Las transmisiones dependen del pais,
                 los derechos deportivos y la programacion.
                 Algunas requieren una cuenta o suscripcion.
               </Text>
             </View>
 
-            <Text style={s.footer}>
+            <Text style={gfStyle(s.footer, gfDark)}>
               GOLFLASH SPORTS TV
             </Text>
           </ScrollView>

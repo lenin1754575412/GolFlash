@@ -1,3 +1,5 @@
+// GOLFLASH_GLOBAL_THEME
+import { useGolTheme, gfStyle, gfColor, gfColors } from "../services/globalTheme";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MotionView, MotionBar, MotionScore } from './GolMotion';
 declare const process: {
@@ -593,6 +595,8 @@ function PhotoImage({
   player: boolean;
   exhausted?: () => void;
 }) {
+  const gfDark = useGolTheme();
+
   const [index, setIndex] = useState(0);
 
   const current = urls[index];
@@ -608,7 +612,7 @@ function PhotoImage({
       <Ionicons
         name={player ? 'person' : 'shield'}
         size={size * .55}
-        color="#777777"
+        color={gfColor("#777777", gfDark, "text")}
       />
     );
   }
@@ -616,17 +620,17 @@ function PhotoImage({
   return (
     <Image
       key={current}
-      fadeDuration={300}
+      fadeDuration={0}
       source={{ uri: current }}
       resizeMode={player ? 'cover' : 'contain'}
       onError={() => {
         setIndex(old => old === index ? old + 1 : old);
       }}
-      style={{
+      style={gfStyle({
         width: size - 2,
         height: size - 2,
         borderRadius: size / 2
-      }}
+      }, gfDark)}
     />
   );
 }
@@ -638,6 +642,10 @@ export function PlayerAvatar({
   uri?: string;
   size: number;
 }) {
+  const gfDark = useGolTheme();
+
+
+  const gfPrimaryLoaded = React.useRef(false);
 
   const [resolved, setResolved] =
     useState<string[]>([]);
@@ -664,6 +672,7 @@ export function PlayerAvatar({
 
     setResolved([]);
     setFailed([]);
+    gfPrimaryLoaded.current = false;
     setLoading(true);
 
     let parsed: any = {};
@@ -674,7 +683,14 @@ export function PlayerAvatar({
       parsed = { direct: uri };
     }
 
-    additionalPhotos(parsed)
+    const gfPhotoTimer = setTimeout(() => {
+
+      if (gfPrimaryLoaded.current) {
+        setLoading(false);
+        return;
+      }
+
+      additionalPhotos(parsed)
       .then(photos => {
         if (alive) setResolved(photos);
       })
@@ -683,15 +699,18 @@ export function PlayerAvatar({
         if (alive) setLoading(false);
       });
 
+    }, 350);
+
     return () => {
+      clearTimeout(gfPhotoTimer);
       alive = false;
     };
 
   }, [uri]);
 
   const candidates = uniquePhotos([
-    ...resolved,
     info.direct,
+    ...resolved,
     /^\d+$/.test(id)
       ? 'https://a.espncdn.com/i/headshots/soccer/players/full/' +
         id + '.png'
@@ -703,7 +722,7 @@ export function PlayerAvatar({
   );
 
   return (
-    <View style={{
+    <View style={gfStyle({
       width: size,
       height: size,
       borderRadius: size / 2,
@@ -713,12 +732,12 @@ export function PlayerAvatar({
       overflow: 'hidden',
       borderWidth: 1,
       borderColor: '#526C53',
-    }}>
+    }, gfDark)}>
 
       <Ionicons
         name="person-outline"
         size={size * 0.57}
-        color="#A8B9A8"
+        color={gfColor("#A8B9A8", gfDark, "text")}
       />
 
       {current ? (
@@ -726,29 +745,37 @@ export function PlayerAvatar({
           key={current}
           source={{ uri: current }}
           resizeMode="contain"
-          fadeDuration={150}
+          fadeDuration={0}
+          onLoad={() => {
+            if (
+              info.direct &&
+              current === info.direct
+            ) {
+              gfPrimaryLoaded.current = true;
+            }
+          }}
           onError={() => {
             setFailed(old =>
               old.includes(current)
                 ? old : [...old, current]
             );
           }}
-          style={{
+          style={gfStyle({
             position: 'absolute',
             width: size - 2,
             height: size - 2,
             borderRadius: size / 2,
-          }}
+          }, gfDark)}
         />
       ) : loading ? (
         <ActivityIndicator
           size="small"
-          color="#76E536"
-          style={{
+          color={gfColor("#76E536", gfDark, "text")}
+          style={gfStyle({
             position: 'absolute',
             bottom: 2,
             right: 2,
-          }}
+          }, gfDark)}
         />
       ) : null}
 
@@ -764,8 +791,10 @@ function Avatar({
   size?: number;
   player?: boolean;
 }) {
+  const gfDark = useGolTheme();
+
   return (
-    <View style={{
+    <View style={gfStyle({
       width: size,
       height: size,
       borderRadius: size / 2,
@@ -773,7 +802,7 @@ function Avatar({
       overflow: 'hidden',
       alignItems: 'center',
       justifyContent: 'center'
-    }}>
+    }, gfDark)}>
       {player ? (
         <PlayerAvatar
           key={uri}
@@ -794,10 +823,12 @@ function Avatar({
 
 
 function Empty({ message }: { message?: string }) {
+  const gfDark = useGolTheme();
+
   return (
-    <View style={s.empty}>
-      <Ionicons name="information-circle-outline" size={28} color={C.gray} />
-      <Text style={s.muted}>
+    <View style={gfStyle(s.empty, gfDark)}>
+      <Ionicons name="information-circle-outline" size={28} color={gfColor(C.gray, gfDark, "text")} />
+      <Text style={gfStyle(s.muted, gfDark)}>
         {message || 'Información no disponible para este partido.'}
       </Text>
     </View>
@@ -805,10 +836,12 @@ function Empty({ message }: { message?: string }) {
 }
 
 function Card({ title, children }: any) {
+  const gfDark = useGolTheme();
+
   return (
-    <View style={s.card}>
-      <Text style={s.cardTitle}>{title}</Text>
-      <View style={s.cardBody}>{children}</View>
+    <View style={gfStyle(s.card, gfDark)}>
+      <Text style={gfStyle(s.cardTitle, gfDark)}>{title}</Text>
+      <View style={gfStyle(s.cardBody, gfDark)}>{children}</View>
     </View>
   );
 }
@@ -816,6 +849,8 @@ function Card({ title, children }: any) {
 function Bar({ title, home, away }: {
   title: string; home: any; away: any;
 }) {
+  const gfDark = useGolTheme();
+
   const h = parseFloat(String(home));
   const a = parseFloat(String(away));
   const valid = Number.isFinite(h) && Number.isFinite(a);
@@ -825,18 +860,18 @@ function Bar({ title, home, away }: {
   const ap = total > 0 ? Math.max(0, a) / total * 100 : 0;
 
   return (
-    <View style={s.stat}>
-      <View style={s.statRow}>
-        <Text style={[s.statValue, { color: C.green }]}>{home}</Text>
-        <Text style={s.statName}>{title}</Text>
-        <Text style={[s.statValue, { color: C.blue }]}>{away}</Text>
+    <View style={gfStyle(s.stat, gfDark)}>
+      <View style={gfStyle(s.statRow, gfDark)}>
+        <Text style={gfStyle([s.statValue, { color: C.green }], gfDark)}>{home}</Text>
+        <Text style={gfStyle(s.statName, gfDark)}>{title}</Text>
+        <Text style={gfStyle([s.statValue, { color: C.blue }], gfDark)}>{away}</Text>
       </View>
-      <View style={s.trackRow}>
-        <View style={s.track}>
-          <MotionBar percent={hp} color={C.green} reverse />
+      <View style={gfStyle(s.trackRow, gfDark)}>
+        <View style={gfStyle(s.track, gfDark)}>
+          <MotionBar percent={hp} color={gfColor(C.green, gfDark, "text")} reverse />
         </View>
-        <View style={s.track}>
-          <MotionBar percent={ap} color={C.blue} />
+        <View style={gfStyle(s.track, gfDark)}>
+          <MotionBar percent={ap} color={gfColor(C.blue, gfDark, "text")} />
         </View>
       </View>
     </View>
@@ -844,13 +879,15 @@ function Bar({ title, home, away }: {
 }
 
 function Player({ item }: { item: any }) {
+  const gfDark = useGolTheme();
+
   const a = item?.athlete || item;
 
   return (
-    <View style={s.player}>
+    <View style={gfStyle(s.player, gfDark)}>
       <Avatar uri={playerPhoto(item)} size={42} player />
-      <Text style={s.number}>{item?.jersey || a?.jersey || '—'}</Text>
-      <Text style={s.playerName} numberOfLines={2}>
+      <Text style={gfStyle(s.number, gfDark)}>{item?.jersey || a?.jersey || '—'}</Text>
+      <Text style={gfStyle(s.playerName, gfDark)} numberOfLines={2}>
         {nameOf(a) || 'Jugador'}
       </Text>
     </View>
@@ -893,20 +930,22 @@ function formationRows(roster: any) {
 }
 
 function Pitch({ roster, reverse }: { roster: any; reverse?: boolean }) {
+  const gfDark = useGolTheme();
+
   const rows = formationRows(roster);
   const ordered = reverse ? [...rows].reverse() : rows;
 
   return (
     <View>
-      <View style={s.teamTitle}>
+      <View style={gfStyle(s.teamTitle, gfDark)}>
         <Avatar uri={logoOf(roster?.team)} />
-        <View style={{ flex: 1 }}>
-          <Text style={s.text}>{nameOf(roster?.team)}</Text>
-          <Text style={s.muted}>
+        <View style={gfStyle({ flex: 1 }, gfDark)}>
+          <Text style={gfStyle(s.text, gfDark)}>{nameOf(roster?.team)}</Text>
+          <Text style={gfStyle(s.muted, gfDark)}>
             Formación: {roster?.formation || 'No publicada'}
           </Text>
           {nameOf(roster?.coach?.[0]) ? (
-            <Text style={s.muted}>{nameOf(roster.coach[0])}</Text>
+            <Text style={gfStyle(s.muted, gfDark)}>{nameOf(roster.coach[0])}</Text>
           ) : null}
         </View>
       </View>
@@ -914,22 +953,22 @@ function Pitch({ roster, reverse }: { roster: any; reverse?: boolean }) {
       {!rows.length ? (
         <Empty message="Alineación titular todavía no publicada." />
       ) : (
-        <View style={s.pitch}>
-          <View pointerEvents="none" style={[
+        <View style={gfStyle(s.pitch, gfDark)}>
+          <View pointerEvents="none" style={gfStyle([
             s.penaltyArea,
             reverse ? { bottom: 0 } : { top: 0 }
-          ]} />
+          ], gfDark)} />
           {ordered.map((row, i) => (
-            <MotionView key={i} delay={i * 75} style={s.formationRow}>
+            <MotionView key={i} delay={i * 75} style={gfStyle(s.formationRow, gfDark)}>
               {row.map((p: any, j: number) => (
                 <Player key={`${p?.athlete?.id || j}-${j}`} item={p} />
               ))}
             </MotionView>
           ))}
-          <View pointerEvents="none" style={[
+          <View pointerEvents="none" style={gfStyle([
             s.halfCircle,
             reverse ? { top: -45 } : { bottom: -45 }
-          ]} />
+          ], gfDark)} />
         </View>
       )}
     </View>
@@ -937,6 +976,8 @@ function Pitch({ roster, reverse }: { roster: any; reverse?: boolean }) {
 }
 
 function Substitutes({ roster }: { roster: any }) {
+  const gfDark = useGolTheme();
+
   const players = arr(roster?.roster).filter(
     p => p?.starter === false || p?.starter === 'false'
   );
@@ -944,11 +985,11 @@ function Substitutes({ roster }: { roster: any }) {
   return (
     <Card title={`SUPLENTES · ${nameOf(roster?.team)}`}>
       {players.length ? players.map((p, i) => (
-        <View style={s.eventRow} key={i}>
+        <View style={gfStyle(s.eventRow, gfDark)} key={i}>
           <Avatar uri={playerPhoto(p)} size={42} player />
-          <Text style={s.text}>{p?.jersey || '—'}</Text>
-          <Text style={[s.text, { flex: 1 }]}>{nameOf(p.athlete || p)}</Text>
-          <Text style={s.muted}>{p?.position?.abbreviation || ''}</Text>
+          <Text style={gfStyle(s.text, gfDark)}>{p?.jersey || '—'}</Text>
+          <Text style={gfStyle([s.text, { flex: 1 }], gfDark)}>{nameOf(p.athlete || p)}</Text>
+          <Text style={gfStyle(s.muted, gfDark)}>{p?.position?.abbreviation || ''}</Text>
         </View>
       )) : <Empty message="Suplentes no publicados." />}
     </Card>
@@ -966,6 +1007,8 @@ function eventLabel(e: any) {
 }
 
 function EventList({ events, title }: { events: any[]; title: string }) {
+  const gfDark = useGolTheme();
+
   return (
     <Card title={title}>
       {events.length ? events.map((e, i) => {
@@ -975,22 +1018,22 @@ function EventList({ events, title }: { events: any[]; title: string }) {
         const label = eventLabel(e);
 
         return (
-          <View style={s.eventRow} key={`${e?.id || i}-${i}`}>
-            <Text style={s.minute}>
+          <View style={gfStyle(s.eventRow, gfDark)} key={`${e?.id || i}-${i}`}>
+            <Text style={gfStyle(s.minute, gfDark)}>
               {e?.clock?.displayValue || e?.time?.displayValue || '—'}
             </Text>
             {athlete ? <Avatar uri={playerPhoto(athlete)} player /> : (
               <Ionicons
                 name={label === 'Gol' ? 'football' : 'information-circle-outline'}
-                color={C.green} size={25} />
+                color={gfColor(C.green, gfDark, "text")} size={25} />
             )}
-            <View style={{ flex: 1 }}>
-              <Text style={s.text}>{nameOf(athlete) || label}</Text>
-              <Text style={s.muted}>{label}</Text>
-              {e?.text ? <Text style={s.muted}>{e.text}</Text> : null}
+            <View style={gfStyle({ flex: 1 }, gfDark)}>
+              <Text style={gfStyle(s.text, gfDark)}>{nameOf(athlete) || label}</Text>
+              <Text style={gfStyle(s.muted, gfDark)}>{label}</Text>
+              {e?.text ? <Text style={gfStyle(s.muted, gfDark)}>{e.text}</Text> : null}
             </View>
-            {label.includes('amarilla') ? <View style={s.yellow} /> : null}
-            {label.includes('roja') ? <View style={s.red} /> : null}
+            {label.includes('amarilla') ? <View style={gfStyle(s.yellow, gfDark)} /> : null}
+            {label.includes('roja') ? <View style={gfStyle(s.red, gfDark)} /> : null}
           </View>
         );
       }) : <Empty message="No hay incidencias publicadas." />}
@@ -999,6 +1042,8 @@ function EventList({ events, title }: { events: any[]; title: string }) {
 }
 
 function StandingGroups({ data }: { data: any }) {
+  const gfDark = useGolTheme();
+
   const groups: any[] = [];
 
   function walk(node: any) {
@@ -1033,23 +1078,23 @@ function StandingGroups({ data }: { data: any }) {
         <Card key={gi} title={g.name}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View>
-              <View style={s.tableRow}>
-                <Text style={[s.tableTeam, s.muted]}>EQUIPO</Text>
+              <View style={gfStyle(s.tableRow, gfDark)}>
+                <Text style={gfStyle([s.tableTeam, s.muted], gfDark)}>EQUIPO</Text>
                 {cols.map(c => (
-                  <Text style={[s.tableCell, s.muted]} key={c[0]}>{c[0]}</Text>
+                  <Text style={gfStyle([s.tableCell, s.muted], gfDark)} key={c[0]}>{c[0]}</Text>
                 ))}
               </View>
               {g.entries.map((entry: any, i: number) => (
-                <View style={s.tableRow} key={i}>
-                  <View style={s.tableTeam}>
-                    <Text style={s.rank}>{i + 1}</Text>
+                <View style={gfStyle(s.tableRow, gfDark)} key={i}>
+                  <View style={gfStyle(s.tableTeam, gfDark)}>
+                    <Text style={gfStyle(s.rank, gfDark)}>{i + 1}</Text>
                     <Avatar uri={logoOf(entry.team)} size={25} />
-                    <Text style={[s.text, { flex: 1 }]} numberOfLines={1}>
+                    <Text style={gfStyle([s.text, { flex: 1 }], gfDark)} numberOfLines={1}>
                       {nameOf(entry.team)}
                     </Text>
                   </View>
                   {cols.map(c => (
-                    <Text style={s.tableCell} key={c[0]}>
+                    <Text style={gfStyle(s.tableCell, gfDark)} key={c[0]}>
                       {valueOf(arr(entry.stats).find(st => st.name === c[1]))}
                     </Text>
                   ))}
@@ -1064,6 +1109,8 @@ function StandingGroups({ data }: { data: any }) {
 }
 
 export default function MatchAdvanced({ match }: { match: Match }) {
+  const gfDark = useGolTheme();
+
   const [tab, setTab] = useState('RESUMEN');
   const [data, setData] = useState<any>(null);
   const [standings, setStandings] = useState<any>(null);
@@ -1187,9 +1234,9 @@ export default function MatchAdvanced({ match }: { match: Match }) {
 
   const statistics = () => (
     <Card title="ESTADÍSTICAS DEL PARTIDO">
-      <View style={s.comparisonHeader}>
+      <View style={gfStyle(s.comparisonHeader, gfDark)}>
         <Avatar uri={match.homeLogo} />
-        <Text style={s.muted}>Local / Visitante</Text>
+        <Text style={gfStyle(s.muted, gfDark)}>Local / Visitante</Text>
         <Avatar uri={match.awayLogo} />
       </View>
       {statNames.length ? statNames.map(key => {
@@ -1212,7 +1259,7 @@ export default function MatchAdvanced({ match }: { match: Match }) {
               <Card title="ALINEACIONES TITULARES">
                 <Pitch roster={homeRoster} />
                 <Pitch roster={awayRoster} reverse />
-                <Text style={s.note}>
+                <Text style={gfStyle(s.note, gfDark)}>
                   Distribución orientativa según formación y orden de jugadores publicado.
                 </Text>
               </Card>
@@ -1254,16 +1301,16 @@ export default function MatchAdvanced({ match }: { match: Match }) {
         return (
           <View>
             <Card title="SEGUIMIENTO DEL PARTIDO">
-              <Text style={s.text}>
+              <Text style={gfStyle(s.text, gfDark)}>
                 {competition?.status?.type?.description || match.statusText}
               </Text>
-              <Text style={s.muted}>
+              <Text style={gfStyle(s.muted, gfDark)}>
                 {match.status === 'live'
                   ? 'Actualización automática cada 30 segundos.'
                   : 'El partido no está actualmente en directo.'}
               </Text>
-              <Pressable style={s.button} onPress={() => setRetry(x => x + 1)}>
-                <Text style={s.buttonText}>Actualizar información</Text>
+              <Pressable style={gfStyle(s.button, gfDark)} onPress={() => setRetry(x => x + 1)}>
+                <Text style={gfStyle(s.buttonText, gfDark)}>Actualizar información</Text>
               </Pressable>
             </Card>
             <EventList title="MINUTO A MINUTO" events={plays.length ? plays : events} />
@@ -1276,37 +1323,37 @@ export default function MatchAdvanced({ match }: { match: Match }) {
       case 'CLASIFICACIÓN':
         return standings ? (
           <StandingGroups data={standings} />
-        ) : <ActivityIndicator color={C.green} />;
+        ) : <ActivityIndicator color={gfColor(C.green, gfDark, "text")} />;
 
       case 'CUOTAS':
         return (
           <Card title="CUOTAS PUBLICADAS POR LA FUENTE">
             {odds.length ? odds.map((o, i) => (
-              <View style={s.odds} key={i}>
-                <Text style={s.text}>
+              <View style={gfStyle(s.odds, gfDark)} key={i}>
+                <Text style={gfStyle(s.text, gfDark)}>
                   {o?.provider?.name || 'Proveedor no indicado'}
                 </Text>
-                <Text style={s.muted}>
+                <Text style={gfStyle(s.muted, gfDark)}>
                   {o?.details || 'Mercado no indicado'}
                 </Text>
-                <View style={s.statRow}>
+                <View style={gfStyle(s.statRow, gfDark)}>
                   {[
                     ['1', o?.moneyline?.home?.close?.odds || o?.homeTeamOdds?.moneyLine],
                     ['X', o?.moneyline?.draw?.close?.odds || o?.drawOdds?.moneyLine],
                     ['2', o?.moneyline?.away?.close?.odds || o?.awayTeamOdds?.moneyLine]
                   ].map(([label, val], j) => (
-                    <View style={s.oddsCell} key={j}>
-                      <Text style={s.muted}>{label}</Text>
-                      <Text style={s.text}>{val == null ? '—' : String(val)}</Text>
+                    <View style={gfStyle(s.oddsCell, gfDark)} key={j}>
+                      <Text style={gfStyle(s.muted, gfDark)}>{label}</Text>
+                      <Text style={gfStyle(s.text, gfDark)}>{val == null ? '—' : String(val)}</Text>
                     </View>
                   ))}
                 </View>
                 {o?.overUnder != null ? (
-                  <Text style={s.muted}>Total: {o.overUnder}</Text>
+                  <Text style={gfStyle(s.muted, gfDark)}>Total: {o.overUnder}</Text>
                 ) : null}
               </View>
             )) : <Empty message="No hay cuotas publicadas para este partido." />}
-            <Text style={s.note}>
+            <Text style={gfStyle(s.note, gfDark)}>
               Información referencial. Las cuotas pueden cambiar y conservar el formato original del proveedor. +18.
             </Text>
           </Card>
@@ -1316,15 +1363,15 @@ export default function MatchAdvanced({ match }: { match: Match }) {
         return (
           <View>
             <Card title="PREVIA DEL ENCUENTRO">
-              <View style={s.comparisonHeader}>
+              <View style={gfStyle(s.comparisonHeader, gfDark)}>
                 <Avatar uri={match.homeLogo} size={58} />
-                <Text style={s.text}>VS</Text>
+                <Text style={gfStyle(s.text, gfDark)}>VS</Text>
                 <Avatar uri={match.awayLogo} size={58} />
               </View>
-              <Text style={s.center}>{match.home} - {match.away}</Text>
-              <Text style={s.muted}>{match.league}</Text>
-              <Text style={s.muted}>{match.venue || 'Estadio no indicado'}</Text>
-              <Text style={s.muted}>
+              <Text style={gfStyle(s.center, gfDark)}>{match.home} - {match.away}</Text>
+              <Text style={gfStyle(s.muted, gfDark)}>{match.league}</Text>
+              <Text style={gfStyle(s.muted, gfDark)}>{match.venue || 'Estadio no indicado'}</Text>
+              <Text style={gfStyle(s.muted, gfDark)}>
                 {new Date(match.date).toLocaleString('es-PE', {
                   timeZone: 'America/Lima'
                 })}
@@ -1334,9 +1381,9 @@ export default function MatchAdvanced({ match }: { match: Match }) {
               {arr(data?.lastFiveGames).length ? (
                 arr(data.lastFiveGames).map((team, i) => (
                   <View key={i}>
-                    <Text style={s.text}>{nameOf(team?.team)}</Text>
+                    <Text style={gfStyle(s.text, gfDark)}>{nameOf(team?.team)}</Text>
                     {arr(team?.events).map((ev, j) => (
-                      <Text key={j} style={s.history}>
+                      <Text key={j} style={gfStyle(s.history, gfDark)}>
                         {ev?.gameDate || ev?.date || ''} · {ev?.opponent?.displayName || ev?.opponent?.name || ''}
                         {' '}{ev?.score || ''} {ev?.gameResult || ''}
                       </Text>
@@ -1358,14 +1405,14 @@ export default function MatchAdvanced({ match }: { match: Match }) {
                   <Bar title="Proyección"
                     home={`${predictor?.homeTeam?.gameProjection ?? '—'}%`}
                     away={`${predictor?.awayTeam?.gameProjection ?? '—'}%`} />
-                  <Text style={s.muted}>
+                  <Text style={gfStyle(s.muted, gfDark)}>
                     Empate: {predictor?.homeTeam?.tie ?? predictor?.awayTeam?.tie ?? 'No publicado'}
                   </Text>
                 </View>
               ) : <Empty message="Este partido no tiene predicciones verificables publicadas." />}
             </Card>
             {statistics()}
-            <Text style={s.note}>
+            <Text style={gfStyle(s.note, gfDark)}>
               No se generan valores ELO, xG ni probabilidades ficticias.
             </Text>
           </View>
@@ -1379,17 +1426,17 @@ export default function MatchAdvanced({ match }: { match: Match }) {
               const photo = n?.images?.[0]?.url;
 
               return (
-                <Pressable key={i} style={s.article}
+                <Pressable key={i} style={gfStyle(s.article, gfDark)}
                   onPress={() => {
                     if (url && /^https:\/\//i.test(url)) {
                       Linking.openURL(url).catch(() => {});
                     }
                   }}>
                   {photo ? (
-                    <Image source={{ uri: photo }} style={s.articlePhoto} />
+                    <Image source={{ uri: photo }} style={gfStyle(s.articlePhoto, gfDark)} />
                   ) : null}
-                  <Text style={s.text}>{n?.headline || n?.title}</Text>
-                  <Text style={s.muted}>{n?.description || ''}</Text>
+                  <Text style={gfStyle(s.text, gfDark)}>{n?.headline || n?.title}</Text>
+                  <Text style={gfStyle(s.muted, gfDark)}>{n?.description || ''}</Text>
                 </Pressable>
               );
             }) : <Empty message="No hay noticias asociadas al encuentro." />}
@@ -1400,15 +1447,15 @@ export default function MatchAdvanced({ match }: { match: Match }) {
         return (
           <View>
             <Card title="MARCADOR ACTUALIZADO">
-              <View style={s.comparisonHeader}>
+              <View style={gfStyle(s.comparisonHeader, gfDark)}>
                 <Avatar uri={match.homeLogo} size={48} />
                 <MotionScore
-  style={s.score}
+  style={gfStyle(s.score, gfDark)}
   value={String(competition?.competitors?.find((x: any) => x.homeAway === 'home')?.score ?? match.homeScore ?? '-') + ' - ' + String(competition?.competitors?.find((x: any) => x.homeAway === 'away')?.score ?? match.awayScore ?? '-')}
 />
                 <Avatar uri={match.awayLogo} size={48} />
               </View>
-              <Text style={s.center}>
+              <Text style={gfStyle(s.center, gfDark)}>
                 {competition?.status?.type?.detail || match.statusText}
               </Text>
             </Card>
@@ -1421,15 +1468,15 @@ export default function MatchAdvanced({ match }: { match: Match }) {
   };
 
   return (
-    <View style={s.root}>
+    <View style={gfStyle(s.root, gfDark)}>
       <ScrollView horizontal
         showsHorizontalScrollIndicator={false}
-        style={s.tabScroll}
-        contentContainerStyle={s.tabs}>
+        style={gfStyle(s.tabScroll, gfDark)}
+        contentContainerStyle={gfStyle(s.tabs, gfDark)}>
         {TABS.map(t => (
           <Pressable key={t} onPress={() => setTab(t)}
-            style={[s.tab, tab === t && s.activeTab]}>
-            <Text style={[s.tabText, tab === t && s.activeText]}>{t}</Text>
+            style={gfStyle([s.tab, tab === t && s.activeTab], gfDark)}>
+            <Text style={gfStyle([s.tabText, tab === t && s.activeText], gfDark)}>{t}</Text>
           </Pressable>
         ))}
       </ScrollView>
@@ -1437,25 +1484,25 @@ export default function MatchAdvanced({ match }: { match: Match }) {
       {!supported ? (
         <Empty message="TheSportsDB ofrece cobertura limitada para este partido." />
       ) : loading ? (
-        <View style={s.empty}>
-          <ActivityIndicator size="large" color={C.green} />
-          <Text style={s.muted}>Cargando datos del partido...</Text>
+        <View style={gfStyle(s.empty, gfDark)}>
+          <ActivityIndicator size="large" color={gfColor(C.green, gfDark, "text")} />
+          <Text style={gfStyle(s.muted, gfDark)}>Cargando datos del partido...</Text>
         </View>
       ) : error && !data ? (
         <View>
           <Empty message={error} />
-          <Pressable style={s.button} onPress={() => setRetry(x => x + 1)}>
-            <Text style={s.buttonText}>Reintentar</Text>
+          <Pressable style={gfStyle(s.button, gfDark)} onPress={() => setRetry(x => x + 1)}>
+            <Text style={gfStyle(s.buttonText, gfDark)}>Reintentar</Text>
           </Pressable>
         </View>
       ) : (
         <MotionView key={tab}>
-          {error ? <Text style={s.note}>{error} Mostrando datos anteriores.</Text> : null}
+          {error ? <Text style={gfStyle(s.note, gfDark)}>{error} Mostrando datos anteriores.</Text> : null}
           {render()}
         </MotionView>
       )}
 
-      <Text style={s.note}>Fuente: ESPN · Cobertura según competición.</Text>
+      <Text style={gfStyle(s.note, gfDark)}>Fuente: ESPN · Cobertura según competición.</Text>
     </View>
   );
 }

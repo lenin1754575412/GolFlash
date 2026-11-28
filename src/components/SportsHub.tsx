@@ -1,3 +1,5 @@
+// GOLFLASH_GLOBAL_THEME
+import { useGolTheme, gfStyle, gfColor, gfColors } from "../services/globalTheme";
 import React, {
   useEffect,
   useRef,
@@ -18,7 +20,6 @@ import {
   RefreshControl,
   AppState,
   Linking,
-  useColorScheme,
 } from 'react-native';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -54,16 +55,18 @@ function SportBar({
   onSelect: (sport: SportId) => void;
   light?: boolean;
 }) {
+  const gfDark = useGolTheme();
+
   return (
-    <View style={{ height: 76 }}>
+    <View style={gfStyle({ height: 76 }, gfDark)}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{
+        contentContainerStyle={gfStyle({
           paddingHorizontal: 12,
           alignItems: 'center',
           gap: 8,
-        }}
+        }, gfDark)}
       >
         {SPORTS.map(sport => {
           const active = selected === sport.id;
@@ -72,7 +75,7 @@ function SportBar({
             <Pressable
               key={sport.id}
               onPress={() => onSelect(sport.id)}
-              style={{
+              style={gfStyle({
                 minWidth: 72,
                 paddingVertical: 10,
                 paddingHorizontal: 11,
@@ -82,21 +85,21 @@ function SportBar({
                 backgroundColor: active
                   ? (light ? '#E5F3DF' : '#293D24')
                   : (light ? '#FFFFFF' : '#303030'),
-              }}
+              }, gfDark)}
             >
               <Ionicons
                 name={sport.icon as IconName}
-                color={active ? GREEN : '#999999'}
+                color={gfColor(active ? GREEN : '#999999', gfDark, "text")}
                 size={23}
               />
 
-              <Text style={{
+              <Text style={gfStyle({
                 fontSize: 11,
                 fontWeight: active ? '700' : '500',
                 color: active
                   ? GREEN
                   : light ? '#333333' : '#EEEEEE',
-              }}>
+              }, gfDark)}>
                 {sport.name}
               </Text>
             </Pressable>
@@ -116,6 +119,8 @@ function SportsScreen({
   onSport: (sport: SportId) => void;
   onClose: () => void;
 }) {
+  const gfDark = useGolTheme();
+
   const [day, setDay] = useState(dayFromOffset(0));
 
   const [direct, setDirect] = useState(false);
@@ -135,11 +140,7 @@ function SportsScreen({
   const [auto, setAuto] = useState(true);
   const [active, setActive] = useState(true);
 
-  const [theme, setTheme] = useState('dark');
-  const scheme = useColorScheme();
-
-  const light = theme === 'light' ||
-    (theme === 'system' && scheme === 'light');
+  const light = !useGolTheme();
 
   const C = {
     bg: light ? '#F4F5F6' : '#1F1F1F',
@@ -167,11 +168,7 @@ function SportsScreen({
       .then(value => setAuto(value !== 'false'))
       .catch(() => {});
 
-    AsyncStorage.getItem('@golflash/preferences-v2')
-      .then(value => {
-        if (value) setTheme(JSON.parse(value).theme || 'dark');
-      })
-      .catch(() => {});
+    
 
     const sub = AppState.addEventListener(
       'change',
@@ -307,43 +304,43 @@ function SportsScreen({
   ];
 
   return (
-    <SafeAreaView style={{
+    <SafeAreaView style={gfStyle({
       flex: 1,
       backgroundColor: C.bg,
-    }}>
-      <View style={{
+    }, gfDark)}>
+      <View style={gfStyle({
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
         gap: 13,
-      }}>
+      }, gfDark)}>
         <Pressable onPress={onClose} hitSlop={10}>
           <Ionicons
             name="arrow-back"
-            color={C.text}
+            color={gfColor(C.text, gfDark, "text")}
             size={25}
           />
         </Pressable>
 
         <Image
           source={require('../../assets/golflash-logo.png')}
-          style={{
+          style={gfStyle({
             width: 35,
             height: 35,
             borderRadius: 8,
-          }}
+          }, gfDark)}
         />
 
-        <View style={{ flex: 1 }}>
-          <Text style={{
+        <View style={gfStyle({ flex: 1 }, gfDark)}>
+          <Text style={gfStyle({
             color: C.text,
             fontSize: 20,
             fontWeight: '700',
-          }}>
-            GOL<Text style={{ color: GREEN }}>FLASH</Text>
+          }, gfDark)}>
+            GOL<Text style={gfStyle({ color: GREEN }, gfDark)}>FLASH</Text>
           </Text>
 
-          <Text style={{ color: C.muted, fontSize: 10 }}>
+          <Text style={gfStyle({ color: C.muted, fontSize: 10 }, gfDark)}>
             SPORTS
           </Text>
         </View>
@@ -352,7 +349,7 @@ function SportsScreen({
           <Ionicons
             name="calendar-outline"
             size={25}
-            color={C.text}
+            color={gfColor(C.text, gfDark, "text")}
           />
         </Pressable>
 
@@ -363,7 +360,7 @@ function SportsScreen({
           <Ionicons
             name={savedOnly ? 'star' : 'star-outline'}
             size={25}
-            color={savedOnly ? GREEN : C.text}
+            color={gfColor(savedOnly ? GREEN : C.text, gfDark, "text")}
           />
         </Pressable>
       </View>
@@ -374,10 +371,10 @@ function SportsScreen({
         light={light}
       />
 
-      <View style={{
+      <View style={gfStyle({
         flexDirection: 'row',
         paddingHorizontal: 8,
-      }}>
+      }, gfDark)}>
         {tabs.map(tab => {
           const selected = !savedOnly && (
             tab.live ? direct
@@ -388,20 +385,20 @@ function SportsScreen({
             <Pressable
               key={tab.label.split(' ')[0]}
               onPress={() => chooseDay(tab.offset, tab.live)}
-              style={{
+              style={gfStyle({
                 flex: 1,
                 paddingVertical: 17,
                 borderBottomWidth: 3,
                 borderBottomColor: selected
                   ? GREEN : 'transparent',
-              }}
+              }, gfDark)}
             >
-              <Text style={{
+              <Text style={gfStyle({
                 textAlign: 'center',
                 color: selected ? GREEN : C.muted,
                 fontSize: 11,
                 fontWeight: '600',
-              }}>
+              }, gfDark)}>
                 {tab.label}
               </Text>
             </Pressable>
@@ -409,7 +406,7 @@ function SportsScreen({
         })}
       </View>
 
-      <View style={{
+      <View style={gfStyle({
         backgroundColor: C.card,
         margin: 14,
         borderRadius: 13,
@@ -418,46 +415,46 @@ function SportsScreen({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-      }}>
+      }, gfDark)}>
         <Ionicons
           name="search-outline"
           size={21}
-          color={C.muted}
+          color={gfColor(C.muted, gfDark, "text")}
         />
 
         <TextInput
           value={query}
           onChangeText={setQuery}
           placeholder="Buscar equipo, jugador o liga"
-          placeholderTextColor={C.muted}
-          style={{
+          placeholderTextColor={gfColor(C.muted, gfDark, "text")}
+          style={gfStyle({
             flex: 1,
             color: C.text,
             fontSize: 14,
-          }}
+          }, gfDark)}
         />
       </View>
 
-      <View style={{
+      <View style={gfStyle({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
         paddingBottom: 12,
-      }}>
-        <View style={{ flex: 1 }}>
-          <Text style={{
+      }, gfDark)}>
+        <View style={gfStyle({ flex: 1 }, gfDark)}>
+          <Text style={gfStyle({
             color: C.text,
             fontSize: 20,
             fontWeight: '700',
-          }}>
+          }, gfDark)}>
             {savedOnly ? 'Favoritos' : name}
           </Text>
 
-          <Text style={{
+          <Text style={gfStyle({
             color: C.muted,
             fontSize: 12,
             marginTop: 5,
-          }}>
+          }, gfDark)}>
             {day.split('-').reverse().join('/')} · ESPN / TheSportsDB
           </Text>
         </View>
@@ -466,18 +463,18 @@ function SportsScreen({
           <Ionicons
             name="refresh-outline"
             size={26}
-            color={GREEN}
+            color={gfColor(GREEN, gfDark, "text")}
           />
         </Pressable>
       </View>
 
       {warning && !savedOnly ? (
-        <Text style={{
+        <Text style={gfStyle({
           color: C.muted,
           marginHorizontal: 16,
           marginBottom: 10,
           fontSize: 12,
-        }}>
+        }, gfDark)}>
           {warning}
         </Text>
       ) : null}
@@ -485,45 +482,45 @@ function SportsScreen({
       <FlatList
         data={visible}
         keyExtractor={item => item.id}
-        contentContainerStyle={{
+        contentContainerStyle={gfStyle({
           padding: 14,
           paddingBottom: 35,
-        }}
+        }, gfDark)}
         refreshControl={
           <RefreshControl
             refreshing={loading}
             onRefresh={refresh}
-            tintColor={GREEN}
-            colors={[GREEN]}
+            tintColor={gfColor(GREEN, gfDark, "text")}
+            colors={gfColors([GREEN], gfDark, "text")}
           />
         }
         ListEmptyComponent={
           loading ? (
             <ActivityIndicator
-              color={GREEN}
+              color={gfColor(GREEN, gfDark, "text")}
               size="large"
-              style={{ marginTop: 30 }}
+              style={gfStyle({ marginTop: 30 }, gfDark)}
             />
           ) : (
-            <View style={{
+            <View style={gfStyle({
               backgroundColor: C.card,
               padding: 28,
               borderRadius: 16,
               alignItems: 'center',
               gap: 12,
-            }}>
+            }, gfDark)}>
               <Ionicons
                 name="trophy-outline"
-                color={C.muted}
+                color={gfColor(C.muted, gfDark, "text")}
                 size={38}
               />
 
-              <Text style={{
+              <Text style={gfStyle({
                 color: C.text,
                 fontSize: 17,
                 fontWeight: '700',
                 textAlign: 'center',
-              }}>
+              }, gfDark)}>
                 {savedOnly
                   ? 'No tienes favoritos'
                   : direct
@@ -531,10 +528,10 @@ function SportsScreen({
                     : 'No hay eventos disponibles'}
               </Text>
 
-              <Text style={{
+              <Text style={gfStyle({
                 color: C.muted,
                 textAlign: 'center',
-              }}>
+              }, gfDark)}>
                 {savedOnly
                   ? 'Presiona la estrella para guardar un evento.'
                   : 'Consulta otra fecha o actualiza los resultados.'}
@@ -550,50 +547,50 @@ function SportsScreen({
           const open = expanded === item.id;
 
           return (
-            <View style={{
+            <View style={gfStyle({
               backgroundColor: C.card,
               borderRadius: 15,
               marginBottom: 12,
               padding: 16,
-            }}>
+            }, gfDark)}>
               <Pressable onPress={() =>
                 setExpanded(open ? '' : item.id)
               }>
-                <View style={{
+                <View style={gfStyle({
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 7,
-                }}>
+                }, gfDark)}>
                   <Ionicons
                     name="trophy-outline"
                     size={15}
-                    color={GREEN}
+                    color={gfColor(GREEN, gfDark, "text")}
                   />
 
-                  <Text style={{
+                  <Text style={gfStyle({
                     color: C.muted,
                     flex: 1,
                     fontSize: 12,
-                  }}>
+                  }, gfDark)}>
                     {item.league}
                   </Text>
 
-                  <Text style={{
+                  <Text style={gfStyle({
                     color: item.status === 'live'
                       ? '#E85858' : GREEN,
                     fontSize: 11,
                     fontWeight: '700',
-                  }}>
+                  }, gfDark)}>
                     {status(item)}
                   </Text>
                 </View>
 
-                <Text style={{
+                <Text style={gfStyle({
                   color: C.text,
                   fontWeight: '600',
                   marginTop: 13,
                   marginBottom: 10,
-                }}>
+                }, gfDark)}>
                   {item.title}
                 </Text>
 
@@ -602,49 +599,49 @@ function SportsScreen({
                 ).map((p, index) => (
                   <View
                     key={index}
-                    style={{
+                    style={gfStyle({
                       flexDirection: 'row',
                       alignItems: 'center',
                       paddingVertical: 9,
                       gap: 12,
-                    }}
+                    }, gfDark)}
                   >
                     {p.logo ? (
                       <Image
                         source={{ uri: p.logo }}
-                        style={{ width: 32, height: 32 }}
+                        style={gfStyle({ width: 32, height: 32 }, gfDark)}
                         resizeMode="contain"
                       />
                     ) : (
                       <Ionicons
                         name="person-circle-outline"
                         size={32}
-                        color={C.muted}
+                        color={gfColor(C.muted, gfDark, "text")}
                       />
                     )}
 
-                    <Text style={{
+                    <Text style={gfStyle({
                       color: C.text,
                       flex: 1,
                       fontSize: 14,
-                    }}>
+                    }, gfDark)}>
                       {p.name}
                     </Text>
 
-                    <Text style={{
+                    <Text style={gfStyle({
                       color: C.text,
                       fontSize: 19,
                       fontWeight: '800',
-                    }}>
+                    }, gfDark)}>
                       {p.score}
                     </Text>
 
                     {open && p.periods.length > 0 ? (
-                      <Text style={{
+                      <Text style={gfStyle({
                         color: C.muted,
                         fontSize: 11,
                         maxWidth: 95,
-                      }}>
+                      }, gfDark)}>
                         {p.periods.join(' | ')}
                       </Text>
                     ) : null}
@@ -652,38 +649,38 @@ function SportsScreen({
                 ))}
 
                 {item.detail ? (
-                  <Text style={{
+                  <Text style={gfStyle({
                     color: C.muted,
                     fontSize: 12,
                     marginVertical: 7,
-                  }}>
+                  }, gfDark)}>
                     {item.detail}
                   </Text>
                 ) : null}
 
                 {open && item.venue ? (
-                  <Text style={{
+                  <Text style={gfStyle({
                     color: C.muted,
                     marginVertical: 8,
-                  }}>
+                  }, gfDark)}>
                     Sede: {item.venue}
                   </Text>
                 ) : null}
               </Pressable>
 
-              <View style={{
+              <View style={gfStyle({
                 borderTopWidth: 1,
                 borderTopColor: C.line,
                 flexDirection: 'row',
                 alignItems: 'center',
                 paddingTop: 12,
                 gap: 16,
-              }}>
-                <Text style={{
+              }, gfDark)}>
+                <Text style={gfStyle({
                   color: C.muted,
                   flex: 1,
                   fontSize: 11,
-                }}>
+                }, gfDark)}>
                   Fuente: {item.source}
                 </Text>
 
@@ -693,7 +690,7 @@ function SportsScreen({
                   }>
                     <Ionicons
                       name="open-outline"
-                      color={GREEN}
+                      color={gfColor(GREEN, gfDark, "text")}
                       size={20}
                     />
                   </Pressable>
@@ -702,7 +699,7 @@ function SportsScreen({
                 <Pressable onPress={() => toggleFavorite(item)}>
                   <Ionicons
                     name={favorite ? 'star' : 'star-outline'}
-                    color={GREEN}
+                    color={gfColor(GREEN, gfDark, "text")}
                     size={23}
                   />
                 </Pressable>
@@ -714,7 +711,7 @@ function SportsScreen({
                     name={open
                       ? 'chevron-up'
                       : 'chevron-down'}
-                    color={C.muted}
+                    color={gfColor(C.muted, gfDark, "text")}
                     size={20}
                   />
                 </Pressable>
@@ -724,12 +721,12 @@ function SportsScreen({
         }}
         ListFooterComponent={
           updated ? (
-            <Text style={{
+            <Text style={gfStyle({
               color: C.muted,
               textAlign: 'center',
               fontSize: 11,
               padding: 15,
-            }}>
+            }, gfDark)}>
               Actualizado: {matchHour(updated)}
               {auto ? ' · Actualización cada 30 segundos' : ''}
             </Text>

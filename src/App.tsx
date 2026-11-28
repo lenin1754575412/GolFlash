@@ -1,3 +1,6 @@
+// GOLFLASH_GLOBAL_THEME
+import { useGolTheme, gfStyle, gfColor, gfColors } from "./services/globalTheme";
+import WorldFootballPicker from './components/WorldFootballPicker';
 import { PlayerAvatar } from './components/MatchAdvanced';
 import GoalAlerts from './components/GoalAlerts';
 import LiveCarousel from './components/LiveCarousel';
@@ -17,7 +20,7 @@ import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import type { Article, Match, Section } from './types';
-import { dayFromOffset, getMatches, LEAGUES, matchDayText, matchHour, peruKey } from './services/football';
+import { dayFromOffset, getMatches, matchDayText, matchHour, peruKey } from './services/football';
 import { getNews } from './services/news';
 import { getTeamPlayers, type Player } from './services/players';
 
@@ -69,12 +72,16 @@ async function openPage(url?: string) {
 }
 
 function Logo({ url, size = 32 }: { url?: string; size?: number }) {
+  const gfDark = useGolTheme();
+
   return url && /^https:\/\//.test(url)
-    ? <Image source={{ uri: url }} style={{ width: size, height: size }} resizeMode="contain" />
-    : <View style={[styles.emptyLogo, { width: size, height: size }]}><Ionicons name="shield-outline" size={size * .62} color={C.subtle} /></View>;
+    ? <Image source={{ uri: url }} style={gfStyle({ width: size, height: size }, gfDark)} resizeMode="contain" />
+    : <View style={gfStyle([styles.emptyLogo, { width: size, height: size }], gfDark)}><Ionicons name="shield-outline" size={size * .62} color={gfColor(C.subtle, gfDark, "text")} /></View>;
 }
 
 export default function App() {
+  const gfDark = useGolTheme();
+
   const [section, setSection] = useState<Section>('Explorar');
   const [dayChoice, setDayChoice] = useState<number | string>(0);
   const todayKey = dayFromOffset(0);
@@ -110,6 +117,8 @@ export default function App() {
   const [rosterLoading, setRosterLoading] = useState(false);
   const [rosterError, setRosterError] = useState('');
   const [matches, setMatches] = useState<Match[]>([]);
+
+  const [visibleLimit, setVisibleLimit] = useState(24);
   const [favorites, setFavorites] = useState<Match[]>([]);
   const [ready, setReady] = useState(false);
   const [articles, setArticles] = useState<Article[]>([]);
@@ -125,6 +134,11 @@ export default function App() {
   const [appActive, setAppActive] = useState(true);
   const searchRef = useRef<React.ElementRef<typeof TextInput> | null>(null);
   const matchReq = useRef(0);
+
+  const activeMatchRequest = useRef<{
+    day: string;
+    rid: number;
+  } | null>(null);
   const newsReq = useRef(0);
   const matchDate = direct
     ? todayKey
@@ -185,7 +199,17 @@ export default function App() {
   }, [favorites, ready]);
 
   const refreshMatches = useCallback(async () => {
+    if (
+      activeMatchRequest.current?.day === matchDate &&
+      activeMatchRequest.current.rid === matchReq.current
+    ) return;
+
     const rid = ++matchReq.current;
+
+    activeMatchRequest.current = {
+      day: matchDate,
+      rid,
+    };
     setLoading(true); setError('');
     const cacheKey = MATCH_CACHE_PREFIX + matchDate;
     try {
@@ -205,7 +229,43 @@ export default function App() {
       }
     } catch { setMatches([]); }
     try {
-      const result = await getMatches(matchDate);
+      const result = await getMatches(
+        matchDate,
+        partialMatches => {
+
+          if (rid !== matchReq.current) return;
+
+          setMatches(previous => {
+
+            const merged = new Map<string, Match>();
+
+            previous.forEach(match => {
+
+              if (
+                peruKey(new Date(match.date)) === matchDate
+              ) {
+
+                merged.set(match.id, match);
+              }
+            });
+
+            partialMatches.forEach(match => {
+
+              merged.set(match.id, match);
+            });
+
+            return [...merged.values()].sort(
+              (a, b) => a.date.localeCompare(b.date)
+            );
+          });
+
+          setCached(true);
+
+          setWarning(
+            'Cargando mas competiciones...'
+          );
+        }
+      );
       if (rid !== matchReq.current) return;
       setMatches(result.matches);
       setSource(result.source);
@@ -222,7 +282,18 @@ export default function App() {
       setError('No se pudo conectar con los resultados deportivos. Puedes reintentar o consultar datos guardados.');
       setCached(true);
       setWarning('La información que se muestre puede estar desactualizada.');
-    } finally { if (rid === matchReq.current) setLoading(false); }
+    } finally {
+
+      if (
+        activeMatchRequest.current?.rid === rid
+      ) {
+        activeMatchRequest.current = null;
+      }
+
+      if (rid === matchReq.current) {
+        setLoading(false);
+      }
+    }
   }, [matchDate]);
 
   const refreshNews = useCallback(async () => {
@@ -274,6 +345,12 @@ export default function App() {
       .filter(m => `${m.home} ${m.away} ${m.league}`.toLocaleLowerCase('es-PE').includes(query))
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [matches, favorites, section, direct, matchDate, league, query]);
+  useEffect(() => {
+
+    setVisibleLimit(24);
+
+  }, [section, matchDate, direct, league, query]);
+
   const filteredArticles = useMemo(() => articles
     .filter(a => section !== 'Fichaje' || a.isTransfer)
     .filter(a => `${a.title} ${a.description} ${a.league}`.toLocaleLowerCase('es-PE').includes(query)),
@@ -295,24 +372,24 @@ export default function App() {
   const visibleDay = direct ? 'DIRECTO' : offset === -1 ? 'AYER' : offset === 0 ? 'HOY' : offset === 1 ? 'MAÑANA' : matchDayText(`${matchDate}T12:00:00Z`);
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <StatusBar style="light" />
-      <View style={styles.header}>
-        <Pressable style={styles.headerButton} onPress={() => setDrawer(true)} accessibilityLabel="Abrir menú">
-          <Ionicons name="menu-outline" size={32} color={C.white} />
+    <SafeAreaView style={gfStyle(styles.root, gfDark)} edges={['top', 'bottom']}>
+      <StatusBar style={gfDark ? 'light' : 'dark'} />
+      <View style={gfStyle(styles.header, gfDark)}>
+        <Pressable style={gfStyle(styles.headerButton, gfDark)} onPress={() => setDrawer(true)} accessibilityLabel="Abrir menú">
+          <Ionicons name="menu-outline" size={32} color={gfColor(C.white, gfDark, "text")} />
         </Pressable>
-        <Pressable style={styles.brand} onPress={() => navigate('Partidos')}>
-          <Image source={require("../assets/golflash-logo.png")} style={{ width: 34, height: 34, borderRadius: 7 }} resizeMode="contain" />
-          <Text style={styles.brandName}>GOLFLASH</Text>
+        <Pressable style={gfStyle(styles.brand, gfDark)} onPress={() => navigate('Partidos')}>
+          <Image source={require("../assets/golflash-logo.png")} style={gfStyle({ width: 34, height: 34, borderRadius: 7 }, gfDark)} resizeMode="contain" />
+          <Text style={gfStyle(styles.brandName, gfDark)}>GOLFLASH</Text>
         </Pressable>
-        <Pressable style={styles.headerButton} onPress={() => setCalendar(true)} accessibilityLabel="Seleccionar fecha">
-          <Ionicons name="calendar-outline" size={24} color={C.white} />
+        <Pressable style={gfStyle(styles.headerButton, gfDark)} onPress={() => setCalendar(true)} accessibilityLabel="Seleccionar fecha">
+          <Ionicons name="calendar-outline" size={24} color={gfColor(C.white, gfDark, "text")} />
         </Pressable>
-        <Pressable style={styles.headerButton} onPress={() => {
+        <Pressable style={gfStyle(styles.headerButton, gfDark)} onPress={() => {
           if (!isMatchSection) navigate('Explorar');
           setTimeout(() => searchRef.current?.focus(), 80);
         }} accessibilityLabel="Buscar">
-          <Ionicons name="search-outline" size={26} color={C.white} />
+          <Ionicons name="search-outline" size={26} color={gfColor(C.white, gfDark, "text")} />
         </Pressable>
       </View>
 
@@ -324,12 +401,12 @@ export default function App() {
         updated={lastUpdated}
       />
       <Modal visible={teamRoster !== null} animationType="slide" onRequestClose={() => setTeamRoster(null)}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
-          <Pressable onPress={() => setTeamRoster(null)} style={{ padding: 20, flexDirection: 'row', alignItems: 'center', gap: 12 }}><Ionicons name="arrow-back" size={25} color={C.white}/><Text style={{ color: C.white, fontSize: 20 }}>{teamRoster?.name || 'Jugadores'}</Text></Pressable>
-          {rosterLoading ? <ActivityIndicator color={C.green} size="large" /> : null}
-          {rosterError ? <Text style={{ color: C.subtle, padding: 20 }}>{rosterError}</Text> : null}
-          <ScrollView contentContainerStyle={{ padding: 16 }}>
-            {teamRoster?.players.map(player => <View key={player.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 12, borderBottomWidth: 1, borderColor: C.line }}>
+        <SafeAreaView style={gfStyle({ flex: 1, backgroundColor: C.bg }, gfDark)}>
+          <Pressable onPress={() => setTeamRoster(null)} style={gfStyle({ padding: 20, flexDirection: 'row', alignItems: 'center', gap: 12 }, gfDark)}><Ionicons name="arrow-back" size={25} color={gfColor(C.white, gfDark, "text")}/><Text style={gfStyle({ color: C.white, fontSize: 20 }, gfDark)}>{teamRoster?.name || 'Jugadores'}</Text></Pressable>
+          {rosterLoading ? <ActivityIndicator color={gfColor(C.green, gfDark, "text")} size="large" /> : null}
+          {rosterError ? <Text style={gfStyle({ color: C.subtle, padding: 20 }, gfDark)}>{rosterError}</Text> : null}
+          <ScrollView contentContainerStyle={gfStyle({ padding: 16 }, gfDark)}>
+            {teamRoster?.players.map(player => <View key={player.id} style={gfStyle({ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 12, borderBottomWidth: 1, borderColor: C.line }, gfDark)}>
               <PlayerAvatar
   key={player.id}
   size={52}
@@ -340,61 +417,61 @@ export default function App() {
     league: selected?.leagueCode || '',
   })}
 />
-              <View style={{ flex: 1 }}><Text style={{ color: C.white, fontSize: 16 }}>{player.name}</Text><Text style={{ color: C.subtle }}>{player.position}{player.number ? ` · #${player.number}` : ''}{player.age ? ` · ${player.age} años` : ''}</Text></View>
+              <View style={gfStyle({ flex: 1 }, gfDark)}><Text style={gfStyle({ color: C.white, fontSize: 16 }, gfDark)}>{player.name}</Text><Text style={gfStyle({ color: C.subtle }, gfDark)}>{player.position}{player.number ? ` · #${player.number}` : ''}{player.age ? ` · ${player.age} años` : ''}</Text></View>
             </View>)}
           </ScrollView>
         </SafeAreaView>
       </Modal>
 
       {selected ? (
-        <ScrollView style={styles.flex} contentContainerStyle={styles.contentPadding}>
-          <Pressable onPress={() => setSelected(null)} style={styles.backLine}>
-            <Ionicons name="arrow-back" size={19} color={C.white} />
-            <Text style={styles.backLineText}>Volver</Text>
+        <ScrollView style={gfStyle(styles.flex, gfDark)} contentContainerStyle={gfStyle(styles.contentPadding, gfDark)}>
+          <Pressable onPress={() => setSelected(null)} style={gfStyle(styles.backLine, gfDark)}>
+            <Ionicons name="arrow-back" size={19} color={gfColor(C.white, gfDark, "text")} />
+            <Text style={gfStyle(styles.backLineText, gfDark)}>Volver</Text>
           </Pressable>
-          <MotionView key={selected.id} style={styles.detailCard}>
-            <Text style={styles.secondaryLabel}>{selected.league}</Text>
-            <Text style={[styles.detailStatus, isLive(selected) && { color: C.red }]}>{matchState(selected)}</Text>
-            <View style={styles.detailTeamsRow}>
-              <View style={styles.detailTeam}><Logo url={selected.homeLogo} size={56} /><Text style={styles.detailTeamText}>{selected.home}</Text></View>
-              <MotionScore style={styles.detailScore} value={scoreText(selected)} />
-              <View style={styles.detailTeam}><Logo url={selected.awayLogo} size={56} /><Text style={styles.detailTeamText}>{selected.away}</Text></View>
+          <MotionView key={selected.id} style={gfStyle(styles.detailCard, gfDark)}>
+            <Text style={gfStyle(styles.secondaryLabel, gfDark)}>{selected.league}</Text>
+            <Text style={gfStyle([styles.detailStatus, isLive(selected) && { color: C.red }], gfDark)}>{matchState(selected)}</Text>
+            <View style={gfStyle(styles.detailTeamsRow, gfDark)}>
+              <View style={gfStyle(styles.detailTeam, gfDark)}><Logo url={selected.homeLogo} size={56} /><Text style={gfStyle(styles.detailTeamText, gfDark)}>{selected.home}</Text></View>
+              <MotionScore style={gfStyle(styles.detailScore, gfDark)} value={scoreText(selected)} />
+              <View style={gfStyle(styles.detailTeam, gfDark)}><Logo url={selected.awayLogo} size={56} /><Text style={gfStyle(styles.detailTeamText, gfDark)}>{selected.away}</Text></View>
             </View>
             {selected.source === 'ESPN' ? (
-              <View style={{ flexDirection: 'row', gap: 10, marginVertical: 12 }}>
-                <Pressable onPress={() => showPlayers(selected.home, selected.homeTeamId)} style={[styles.actionButton, { flex: 1, justifyContent: 'center' }]}><Text style={styles.actionLabel}>Jugadores local</Text></Pressable>
-                <Pressable onPress={() => showPlayers(selected.away, selected.awayTeamId)} style={[styles.actionButton, { flex: 1, justifyContent: 'center' }]}><Text style={styles.actionLabel}>Jugadores visitante</Text></Pressable>
+              <View style={gfStyle({ flexDirection: 'row', gap: 10, marginVertical: 12 }, gfDark)}>
+                <Pressable onPress={() => showPlayers(selected.home, selected.homeTeamId)} style={gfStyle([styles.actionButton, { flex: 1, justifyContent: 'center' }], gfDark)}><Text style={gfStyle(styles.actionLabel, gfDark)}>Jugadores local</Text></Pressable>
+                <Pressable onPress={() => showPlayers(selected.away, selected.awayTeamId)} style={gfStyle([styles.actionButton, { flex: 1, justifyContent: 'center' }], gfDark)}><Text style={gfStyle(styles.actionLabel, gfDark)}>Jugadores visitante</Text></Pressable>
               </View>
             ) : null}
-            <Text style={styles.dimText}>{matchDayText(selected.date)} · {matchHour(selected.date)} (Perú)</Text>
-            {selected.venue ? <Text style={[styles.dimText, { marginTop: 8 }]}>{selected.venue}</Text> : null}
+            <Text style={gfStyle(styles.dimText, gfDark)}>{matchDayText(selected.date)} · {matchHour(selected.date)} (Perú)</Text>
+            {selected.venue ? <Text style={gfStyle([styles.dimText, { marginTop: 8 }], gfDark)}>{selected.venue}</Text> : null}
           </MotionView>
-          <View style={styles.detailActions}>
-            <Pressable style={styles.actionButton} onPress={() => toggleFavorite(selected)}>
-              <Ionicons name={favoriteIds.has(selected.id) ? 'star' : 'star-outline'} color={C.green} size={22} />
-              <Text style={styles.actionLabel}>{favoriteIds.has(selected.id) ? 'Quitar favorito' : 'Guardar favorito'}</Text>
+          <View style={gfStyle(styles.detailActions, gfDark)}>
+            <Pressable style={gfStyle(styles.actionButton, gfDark)} onPress={() => toggleFavorite(selected)}>
+              <Ionicons name={favoriteIds.has(selected.id) ? 'star' : 'star-outline'} color={gfColor(C.green, gfDark, "text")} size={22} />
+              <Text style={gfStyle(styles.actionLabel, gfDark)}>{favoriteIds.has(selected.id) ? 'Quitar favorito' : 'Guardar favorito'}</Text>
             </Pressable>
-            <Pressable style={styles.actionButton} onPress={() => openPage(selected.link)}>
-              <Ionicons name="open-outline" color={C.green} size={21} />
-              <Text style={styles.actionLabel}>Ver en {selected.source}</Text>
+            <Pressable style={gfStyle(styles.actionButton, gfDark)} onPress={() => openPage(selected.link)}>
+              <Ionicons name="open-outline" color={gfColor(C.green, gfDark, "text")} size={21} />
+              <Text style={gfStyle(styles.actionLabel, gfDark)}>Ver en {selected.source}</Text>
             </Pressable>
           </View>
           <MatchAdvanced key={"advanced-" + selected.id} match={selected} />
-<Text style={styles.sectionTitle}>Información del partido</Text>
-          <View style={styles.informationBox}>
-            <Text style={styles.infoRow}>Estado: {selected.statusText}</Text>
-            <Text style={styles.infoRow}>Competición: {selected.league}</Text>
-            <Text style={styles.infoRow}>Fuente: {selected.source}</Text>
-            <Text style={[styles.dimText, { marginTop: 16 }]}>Los eventos y estadísticas detalladas dependen de la fuente. Abre el enlace original para consultar más información.</Text>
+<Text style={gfStyle(styles.sectionTitle, gfDark)}>Información del partido</Text>
+          <View style={gfStyle(styles.informationBox, gfDark)}>
+            <Text style={gfStyle(styles.infoRow, gfDark)}>Estado: {selected.statusText}</Text>
+            <Text style={gfStyle(styles.infoRow, gfDark)}>Competición: {selected.league}</Text>
+            <Text style={gfStyle(styles.infoRow, gfDark)}>Fuente: {selected.source}</Text>
+            <Text style={gfStyle([styles.dimText, { marginTop: 16 }], gfDark)}>Los eventos y estadísticas detalladas dependen de la fuente. Abre el enlace original para consultar más información.</Text>
           </View>
         </ScrollView>
       ) : (
         <ScrollView
-          style={styles.flex}
-          contentContainerStyle={{
+          style={gfStyle(styles.flex, gfDark)}
+          contentContainerStyle={gfStyle({
             flexGrow: 1,
             paddingBottom: 20,
-          }}
+          }, gfDark)}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           nestedScrollEnabled={true}
@@ -406,8 +483,8 @@ export default function App() {
               onRefresh={
                 isMatchSection ? refreshMatches : refreshNews
               }
-              tintColor={C.green}
-              colors={[C.green]}
+              tintColor={gfColor(C.green, gfDark, "text")}
+              colors={gfColors([C.green], gfDark, "text")}
             />
           }
         >
@@ -440,119 +517,151 @@ export default function App() {
             </>
           ) : null}
 {isMatchSection && section !== 'Favorito' ? (
-            <View style={styles.daysRow}>
+            <View style={gfStyle(styles.daysRow, gfDark)}>
               {(['AYER', 'HOY', 'DIRECTO', 'MAÑANA'] as const).map(tab => (
-                <Pressable key={tab} onPress={() => chooseDay(tab)} style={styles.dayItem}>
-                  <Text style={[styles.dayLabel, tabIsActive(tab) && styles.activeDayLabel]}>{tab === 'DIRECTO' && matchDate === todayKey && !cached && !error && !loading ? 'DIRECTO (' + liveCount + ')' : tab}</Text>
-                  {tabIsActive(tab) ? <View style={styles.dayIndicator} /> : null}
+                <Pressable key={tab} onPress={() => chooseDay(tab)} style={gfStyle(styles.dayItem, gfDark)}>
+                  <Text style={gfStyle([styles.dayLabel, tabIsActive(tab) && styles.activeDayLabel], gfDark)}>{tab === 'DIRECTO' && matchDate === todayKey && !cached && !error && !loading ? 'DIRECTO (' + liveCount + ')' : tab}</Text>
+                  {tabIsActive(tab) ? <View style={gfStyle(styles.dayIndicator, gfDark)} /> : null}
                 </Pressable>
               ))}
             </View>
           ) : (
-            <View style={styles.pageHeading}>
-              <Text style={styles.pageTitle}>{section === 'Favorito' ? 'Mis favoritos' : articleHeader}</Text>
+            <View style={gfStyle(styles.pageHeading, gfDark)}>
+              <Text style={gfStyle(styles.pageTitle, gfDark)}>{section === 'Favorito' ? 'Mis favoritos' : articleHeader}</Text>
               <Pressable onPress={() => section === 'Favorito' ? navigate('Partidos') : refreshNews()} accessibilityLabel="Actualizar">
-                <Ionicons name="refresh-outline" color={C.green} size={23} />
+                <Ionicons name="refresh-outline" color={gfColor(C.green, gfDark, "text")} size={23} />
               </Pressable>
             </View>
           )}
 
-          <View style={styles.searchBox}>
-            <Ionicons name="search-outline" size={19} color={C.subtle} />
+          <View style={gfStyle(styles.searchBox, gfDark)}>
+            <Ionicons name="search-outline" size={19} color={gfColor(C.subtle, gfDark, "text")} />
             <TextInput
-              ref={searchRef} style={styles.searchField} value={search} onChangeText={setSearch}
+              ref={searchRef} style={gfStyle(styles.searchField, gfDark)} value={search} onChangeText={setSearch}
               placeholder={isMatchSection ? 'Buscar equipo o liga' : 'Buscar en las noticias'}
-              placeholderTextColor={C.subtle} returnKeyType="search"
+              placeholderTextColor={gfColor(C.subtle, gfDark, "text")} returnKeyType="search"
             />
-            {search ? <Pressable onPress={() => setSearch('')}><Ionicons name="close-circle" size={20} color={C.subtle} /></Pressable> : null}
+            {search ? <Pressable onPress={() => setSearch('')}><Ionicons name="close-circle" size={20} color={gfColor(C.subtle, gfDark, "text")} /></Pressable> : null}
           </View>
 
           {section === 'Explorar' ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.leaguesScroll} contentContainerStyle={styles.leaguesContent}>
-              {[{ code: 'TODAS', name: 'Todas las ligas' }, ...LEAGUES].map(l => (
-                <Pressable onPress={() => setLeague(l.code)} key={l.code} style={[styles.leagueChip, league === l.code && styles.chipActive]}>
-                  <Text style={[styles.leagueChipText, league === l.code && styles.leagueChipTextActive]}>{l.name}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
+            <WorldFootballPicker value={league} onChange={setLeague} matches={matches} />
           ) : null}
 
           {isMatchSection ? (
-            <View style={styles.listContent}>
-              <View style={styles.headingRow}>
-                <View style={styles.flex}>
-                  <Text style={styles.listTitle}>{section === 'Favorito' ? 'Partidos guardados' : direct ? 'Partidos en directo' : `Partidos · ${visibleDay}`}</Text>
-                  {section !== 'Favorito' ? <Text style={styles.sourceText}>{matchDayText(`${matchDate}T12:00:00Z`)} · Fuente {source}{cached ? ' · Caché' : ''}</Text> : null}
+            <View style={gfStyle(styles.listContent, gfDark)}>
+              <View style={gfStyle(styles.headingRow, gfDark)}>
+                <View style={gfStyle(styles.flex, gfDark)}>
+                  <Text style={gfStyle(styles.listTitle, gfDark)}>{section === 'Favorito' ? 'Partidos guardados' : direct ? 'Partidos en directo' : `Partidos · ${visibleDay}`}</Text>
+                  {section !== 'Favorito' ? <Text style={gfStyle(styles.sourceText, gfDark)}>{matchDayText(`${matchDate}T12:00:00Z`)} · Fuente {source}{cached ? ' · Caché' : ''}</Text> : null}
                 </View>
-                <Pressable onPress={refreshMatches} style={styles.refreshButton} accessibilityLabel="Actualizar partidos">
-                  <Ionicons name="refresh-outline" color={C.green} size={23} />
+                <Pressable onPress={refreshMatches} style={gfStyle(styles.refreshButton, gfDark)} accessibilityLabel="Actualizar partidos">
+                  <Ionicons name="refresh-outline" color={gfColor(C.green, gfDark, "text")} size={23} />
                 </Pressable>
               </View>
-              {loading && matches.length === 0 ? <ActivityIndicator color={C.green} size="large" style={{ marginVertical: 24 }} /> : null}
-              {error && section !== 'Favorito' ? <View style={styles.warningBox}><Ionicons name="cloud-offline-outline" size={19} color={C.subtle} /><Text style={styles.warningText}>{error}</Text></View> : null}
-              {warning && section !== 'Favorito' ? <Text style={styles.warningNote}>{warning}</Text> : null}
+              {loading && matches.length === 0 ? <ActivityIndicator color={gfColor(C.green, gfDark, "text")} size="large" style={gfStyle({ marginVertical: 24 }, gfDark)} /> : null}
+              {error && section !== 'Favorito' ? <View style={gfStyle(styles.warningBox, gfDark)}><Ionicons name="cloud-offline-outline" size={19} color={gfColor(C.subtle, gfDark, "text")} /><Text style={gfStyle(styles.warningText, gfDark)}>{error}</Text></View> : null}
+              {warning && section !== 'Favorito' ? <Text style={gfStyle(styles.warningNote, gfDark)}>{warning}</Text> : null}
               {!loading && filtered.length === 0 ? (
-                <View style={styles.emptyBox}>
-                  <Ionicons name={section === 'Favorito' ? 'star-outline' : direct ? 'radio-outline' : 'football-outline'} color={C.subtle} size={34} />
-                  <Text style={styles.emptyTitle}>{section === 'Favorito' ? 'No hay favoritos' : direct ? 'No hay partidos en vivo' : 'No hay encuentros para mostrar'}</Text>
-                  <Text style={styles.emptyText}>{section === 'Favorito' ? 'Guarda cualquier partido tocando la estrella. Quedará disponible incluso si cierras la aplicación.' : search ? 'Prueba con otro equipo o competición.' : 'Puede que no haya partidos este día en las ligas consultadas o que la fuente no los cubra.'}</Text>
-                  {section !== 'Favorito' ? <Pressable style={styles.greenOutline} onPress={refreshMatches}><Text style={styles.greenText}>Reintentar</Text></Pressable> : null}
+                <View style={gfStyle(styles.emptyBox, gfDark)}>
+                  <Ionicons name={section === 'Favorito' ? 'star-outline' : direct ? 'radio-outline' : 'football-outline'} color={gfColor(C.subtle, gfDark, "text")} size={34} />
+                  <Text style={gfStyle(styles.emptyTitle, gfDark)}>{section === 'Favorito' ? 'No hay favoritos' : direct ? 'No hay partidos en vivo' : 'No hay encuentros para mostrar'}</Text>
+                  <Text style={gfStyle(styles.emptyText, gfDark)}>{section === 'Favorito' ? 'Guarda cualquier partido tocando la estrella. Quedará disponible incluso si cierras la aplicación.' : search ? 'Prueba con otro equipo o competición.' : 'Puede que no haya partidos este día en las ligas consultadas o que la fuente no los cubra.'}</Text>
+                  {section !== 'Favorito' ? <Pressable style={gfStyle(styles.greenOutline, gfDark)} onPress={refreshMatches}><Text style={gfStyle(styles.greenText, gfDark)}>Reintentar</Text></Pressable> : null}
                 </View>
               ) : null}
-              {Array.from(new Map(filtered.map(item => [item.id, item])).values()).map((match, index) => (<MotionView key={"motion-match-" + match.id} delay={Math.min(index * 35, 180)}><Pressable style={styles.matchCard} onPress={() => setSelected(match)}>
-                  <View style={styles.matchMeta}>
-                    <Text numberOfLines={1} style={styles.matchLeague}>{match.league}</Text>
-                    <Text style={[styles.matchMetaStatus, isLive(match) && { color: C.red }]}>{matchState(match)}</Text>
+              {Array.from(new Map(filtered.map(item => [item.id, item])).values()).slice(0, visibleLimit).map((match, index) => (<MotionView key={"motion-match-" + match.id} delay={Math.min(index * 12, 60)}><Pressable style={gfStyle(styles.matchCard, gfDark)} onPress={() => setSelected(match)}>
+                  <View style={gfStyle(styles.matchMeta, gfDark)}>
+                    <Text numberOfLines={1} style={gfStyle(styles.matchLeague, gfDark)}>{match.league}</Text>
+                    <Text style={gfStyle([styles.matchMetaStatus, isLive(match) && { color: C.red }], gfDark)}>{matchState(match)}</Text>
                   </View>
-                  <View style={styles.matchBody}>
-                    <View style={styles.matchTeam}>
+                  <View style={gfStyle(styles.matchBody, gfDark)}>
+                    <View style={gfStyle(styles.matchTeam, gfDark)}>
                       <Logo url={match.homeLogo} size={40} />
-                      <Text numberOfLines={2} style={styles.matchTeamName}>{match.home}</Text>
+                      <Text numberOfLines={2} style={gfStyle(styles.matchTeamName, gfDark)}>{match.home}</Text>
                     </View>
-                    <View style={styles.scoreCenter}>
-                      <MotionScore style={styles.scoreText} value={scoreText(match)} />
-                      {isLive(match) ? <LivePulse style={styles.liveText} /> : null}
+                    <View style={gfStyle(styles.scoreCenter, gfDark)}>
+                      <MotionScore style={gfStyle(styles.scoreText, gfDark)} value={scoreText(match)} />
+                      {isLive(match) ? <LivePulse style={gfStyle(styles.liveText, gfDark)} /> : null}
                     </View>
-                    <View style={styles.matchTeam}>
+                    <View style={gfStyle(styles.matchTeam, gfDark)}>
                       <Logo url={match.awayLogo} size={40} />
-                      <Text numberOfLines={2} style={styles.matchTeamName}>{match.away}</Text>
+                      <Text numberOfLines={2} style={gfStyle(styles.matchTeamName, gfDark)}>{match.away}</Text>
                     </View>
                   </View>
-                  <View style={styles.matchFooter}>
-                    <Text style={styles.footerDate}>{matchDayText(match.date)} · {matchHour(match.date)} PER</Text>
-                    <MotionPressable feedback hitSlop={12} style={styles.favoriteButton} onPress={event => { event.stopPropagation(); toggleFavorite(match); }} accessibilityLabel="Guardar como favorito">
-                      <Ionicons name={favoriteIds.has(match.id) ? 'star' : 'star-outline'} size={21} color={favoriteIds.has(match.id) ? C.green : C.subtle} />
+                  <View style={gfStyle(styles.matchFooter, gfDark)}>
+                    <Text style={gfStyle(styles.footerDate, gfDark)}>{matchDayText(match.date)} · {matchHour(match.date)} PER</Text>
+                    <MotionPressable feedback hitSlop={12} style={gfStyle(styles.favoriteButton, gfDark)} onPress={event => { event.stopPropagation(); toggleFavorite(match); }} accessibilityLabel="Guardar como favorito">
+                      <Ionicons name={favoriteIds.has(match.id) ? 'star' : 'star-outline'} size={21} color={gfColor(favoriteIds.has(match.id) ? C.green : C.subtle, gfDark, "text")} />
                     </MotionPressable>
                   </View>
                 </Pressable></MotionView>))}
-              {lastUpdated && section !== 'Favorito' ? <Text style={styles.refreshFoot}>Actualizado: {matchDayText(lastUpdated)} {matchHour(lastUpdated)} · Arrastra hacia abajo para actualizar.</Text> : null}
+              {filtered.length > visibleLimit ? (
+
+                <Pressable
+                  onPress={() => setVisibleLimit(n => n + 24)}
+                  style={gfStyle({
+                    padding: 15,
+                    marginVertical: 12,
+                    backgroundColor: '#29382A',
+                    borderRadius: 13,
+                    borderWidth: 1,
+                    borderColor: C.green,
+                    alignItems: 'center',
+                  }, gfDark)}
+                >
+
+                  <Text style={gfStyle({
+                    color: C.green,
+                    fontWeight: '800',
+                    fontSize: 14,
+                  }, gfDark)}>
+                    Ver mas partidos
+                  </Text>
+
+                  <Text style={gfStyle({
+                    color: C.subtle,
+                    fontSize: 11,
+                    marginTop: 5,
+                  }, gfDark)}>
+                    {Math.min(visibleLimit, filtered.length)}
+                    {' de '}
+                    {filtered.length}
+                    {' encuentros'}
+                  </Text>
+
+                </Pressable>
+
+              ) : null}
+
+              {lastUpdated && section !== 'Favorito' ? <Text style={gfStyle(styles.refreshFoot, gfDark)}>Actualizado: {matchDayText(lastUpdated)} {matchHour(lastUpdated)} · Arrastra hacia abajo para actualizar.</Text> : null}
             </View>
           ) : (
-            <View style={styles.listContent}>
-              <Text style={styles.sectionIntroduction}>{section === 'Fichaje' ? 'Noticias y rumores de transferencias publicados por las fuentes. Un rumor no confirma un fichaje.' : 'Actualidad del fútbol internacional desde fuentes deportivas.'}</Text>
-              {newsLoading && articles.length === 0 ? <ActivityIndicator color={C.green} style={{ marginVertical: 30 }} size="large" /> : null}
-              {newsError ? <View style={styles.warningBox}><Ionicons name="wifi-outline" color={C.subtle} size={19} /><Text style={styles.warningText}>{newsError}</Text></View> : null}
-              {newsWarning ? <Text style={styles.warningNote}>{newsWarning}</Text> : null}
+            <View style={gfStyle(styles.listContent, gfDark)}>
+              <Text style={gfStyle(styles.sectionIntroduction, gfDark)}>{section === 'Fichaje' ? 'Noticias y rumores de transferencias publicados por las fuentes. Un rumor no confirma un fichaje.' : 'Actualidad del fútbol internacional desde fuentes deportivas.'}</Text>
+              {newsLoading && articles.length === 0 ? <ActivityIndicator color={gfColor(C.green, gfDark, "text")} style={gfStyle({ marginVertical: 30 }, gfDark)} size="large" /> : null}
+              {newsError ? <View style={gfStyle(styles.warningBox, gfDark)}><Ionicons name="wifi-outline" color={gfColor(C.subtle, gfDark, "text")} size={19} /><Text style={gfStyle(styles.warningText, gfDark)}>{newsError}</Text></View> : null}
+              {newsWarning ? <Text style={gfStyle(styles.warningNote, gfDark)}>{newsWarning}</Text> : null}
               {filteredArticles.length === 0 && !newsLoading ? (
-                <View style={styles.emptyBox}>
-                  <Ionicons name={section === 'Fichaje' ? 'swap-horizontal-outline' : 'newspaper-outline'} color={C.subtle} size={35} />
-                  <Text style={styles.emptyTitle}>No se encontraron publicaciones</Text>
-                  <Text style={styles.emptyText}>No se inventan fichajes ni noticias. Prueba actualizar o cambiar la búsqueda.</Text>
-                  <Pressable style={styles.greenOutline} onPress={refreshNews}><Text style={styles.greenText}>Actualizar noticias</Text></Pressable>
+                <View style={gfStyle(styles.emptyBox, gfDark)}>
+                  <Ionicons name={section === 'Fichaje' ? 'swap-horizontal-outline' : 'newspaper-outline'} color={gfColor(C.subtle, gfDark, "text")} size={35} />
+                  <Text style={gfStyle(styles.emptyTitle, gfDark)}>No se encontraron publicaciones</Text>
+                  <Text style={gfStyle(styles.emptyText, gfDark)}>No se inventan fichajes ni noticias. Prueba actualizar o cambiar la búsqueda.</Text>
+                  <Pressable style={gfStyle(styles.greenOutline, gfDark)} onPress={refreshNews}><Text style={gfStyle(styles.greenText, gfDark)}>Actualizar noticias</Text></Pressable>
                 </View>
               ) : null}
-              {filteredArticles.map((article, index) => (<MotionView key={article.id} delay={Math.min(index * 40, 200)}><Pressable style={styles.articleCard} onPress={() => openPage(article.link)}>
-                  {article.image ? <Image source={{ uri: article.image }} style={styles.articleImage} resizeMode="cover" /> : null}
-                  <View style={styles.articleBody}>
-                    <View style={styles.articleHead}>
-                      <Text style={styles.articleLeague}>{article.league} · ESPN</Text>
-                      {article.isTransfer ? <Text style={styles.transferTag}>MERCADO</Text> : null}
+              {filteredArticles.map((article, index) => (<MotionView key={article.id} delay={Math.min(index * 40, 200)}><Pressable style={gfStyle(styles.articleCard, gfDark)} onPress={() => openPage(article.link)}>
+                  {article.image ? <Image source={{ uri: article.image }} style={gfStyle(styles.articleImage, gfDark)} resizeMode="cover" /> : null}
+                  <View style={gfStyle(styles.articleBody, gfDark)}>
+                    <View style={gfStyle(styles.articleHead, gfDark)}>
+                      <Text style={gfStyle(styles.articleLeague, gfDark)}>{article.league} · ESPN</Text>
+                      {article.isTransfer ? <Text style={gfStyle(styles.transferTag, gfDark)}>MERCADO</Text> : null}
                     </View>
-                    <Text style={styles.articleTitle}>{article.title}</Text>
-                    {article.description ? <Text numberOfLines={3} style={styles.articleDescription}>{article.description}</Text> : null}
-                    <View style={styles.articleFooter}>
-                      <Text style={styles.articleTime}>{publishedText(article.published)}</Text>
-                      <View style={styles.articleLink}><Text style={styles.greenText}>Leer artículo</Text><Ionicons name="open-outline" size={16} color={C.green} /></View>
+                    <Text style={gfStyle(styles.articleTitle, gfDark)}>{article.title}</Text>
+                    {article.description ? <Text numberOfLines={3} style={gfStyle(styles.articleDescription, gfDark)}>{article.description}</Text> : null}
+                    <View style={gfStyle(styles.articleFooter, gfDark)}>
+                      <Text style={gfStyle(styles.articleTime, gfDark)}>{publishedText(article.published)}</Text>
+                      <View style={gfStyle(styles.articleLink, gfDark)}><Text style={gfStyle(styles.greenText, gfDark)}>Leer artículo</Text><Ionicons name="open-outline" size={16} color={gfColor(C.green, gfDark, "text")} /></View>
                     </View>
                   </View>
                 </Pressable></MotionView>))}
@@ -560,42 +669,42 @@ export default function App() {
           )}
         </ScrollView>
       )}
-      <View style={styles.bottomBar}>
+      <View style={gfStyle(styles.bottomBar, gfDark)}>
         {NAV.map(item => (
-          <Pressable key={item.label} style={styles.bottomItem} onPress={() => navigate(item.label)} accessibilityLabel={`Ir a ${item.label}`}>
-            <Ionicons name={section === item.label ? item.onIcon : item.icon} color={section === item.label ? C.green : C.subtle} size={27} />
-            <Text style={[styles.bottomText, section === item.label && styles.bottomSelected]}>{item.label}</Text>
+          <Pressable key={item.label} style={gfStyle(styles.bottomItem, gfDark)} onPress={() => navigate(item.label)} accessibilityLabel={`Ir a ${item.label}`}>
+            <Ionicons name={section === item.label ? item.onIcon : item.icon} color={gfColor(section === item.label ? C.green : C.subtle, gfDark, "text")} size={27} />
+            <Text style={gfStyle([styles.bottomText, section === item.label && styles.bottomSelected], gfDark)}>{item.label}</Text>
           </Pressable>
         ))}
       </View>
 
       {drawer ? (
-        <View style={styles.drawerLayer}>
-          <Pressable style={styles.drawerBackdrop} onPress={() => setDrawer(false)} />
-          <MotionDrawer style={styles.drawerPanel} contentContainerStyle={styles.drawerInner}>
-            <View style={styles.drawerHeader}>
-              <Text style={styles.drawerBrand}>GOL<Text style={{ color: C.green }}>FLASH</Text></Text>
-              <Pressable onPress={() => setDrawer(false)} accessibilityLabel="Cerrar menú"><Ionicons name="close" color={C.white} size={25} /></Pressable>
+        <View style={gfStyle(styles.drawerLayer, gfDark)}>
+          <Pressable style={gfStyle(styles.drawerBackdrop, gfDark)} onPress={() => setDrawer(false)} />
+          <MotionDrawer style={gfStyle(styles.drawerPanel, gfDark)} contentContainerStyle={gfStyle(styles.drawerInner, gfDark)}>
+            <View style={gfStyle(styles.drawerHeader, gfDark)}>
+              <Text style={gfStyle(styles.drawerBrand, gfDark)}>GOL<Text style={gfStyle({ color: C.green }, gfDark)}>FLASH</Text></Text>
+              <Pressable onPress={() => setDrawer(false)} accessibilityLabel="Cerrar menú"><Ionicons name="close" color={gfColor(C.white, gfDark, "text")} size={25} /></Pressable>
             </View>
-            <Text style={styles.drawerCaption}>NAVEGACIÓN</Text>
+            <Text style={gfStyle(styles.drawerCaption, gfDark)}>NAVEGACIÓN</Text>
             {NAV.map(item => (
-              <Pressable key={item.label} style={styles.drawerItem} onPress={() => navigate(item.label)}>
-                <Ionicons name={item.icon} color={item.label === section ? C.green : C.white} size={22} />
-                <Text style={[styles.drawerItemText, item.label === section && { color: C.green }]}>{item.label === 'Fichaje' ? 'Fichajes' : item.label === 'Noticia' ? 'Noticias' : item.label === 'Favorito' ? 'Favoritos' : item.label}</Text>
+              <Pressable key={item.label} style={gfStyle(styles.drawerItem, gfDark)} onPress={() => navigate(item.label)}>
+                <Ionicons name={item.icon} color={gfColor(item.label === section ? C.green : C.white, gfDark, "text")} size={22} />
+                <Text style={gfStyle([styles.drawerItemText, item.label === section && { color: C.green }], gfDark)}>{item.label === 'Fichaje' ? 'Fichajes' : item.label === 'Noticia' ? 'Noticias' : item.label === 'Favorito' ? 'Favoritos' : item.label}</Text>
               </Pressable>
             ))}
-            <Text style={[styles.drawerCaption, { marginTop: 22 }]}>PARTIDOS</Text>
+            <Text style={gfStyle([styles.drawerCaption, { marginTop: 22 }], gfDark)}>PARTIDOS</Text>
             {(['AYER', 'HOY', 'DIRECTO', 'MAÑANA'] as const).map(label => (
-              <Pressable key={label} style={styles.drawerItem} onPress={() => { navigate('Partidos'); chooseDay(label); }}>
-                <Ionicons name={label === 'DIRECTO' ? 'radio-outline' : 'calendar-outline'} color={C.white} size={21} />
-                <Text style={styles.drawerItemText}>{label === 'DIRECTO' ? 'En directo' : label}</Text>
+              <Pressable key={label} style={gfStyle(styles.drawerItem, gfDark)} onPress={() => { navigate('Partidos'); chooseDay(label); }}>
+                <Ionicons name={label === 'DIRECTO' ? 'radio-outline' : 'calendar-outline'} color={gfColor(C.white, gfDark, "text")} size={21} />
+                <Text style={gfStyle(styles.drawerItemText, gfDark)}>{label === 'DIRECTO' ? 'En directo' : label}</Text>
               </Pressable>
             ))}
-            <Pressable style={styles.drawerItem} onPress={() => { setDrawer(false); setCalendar(true); }}>
-              <Ionicons name="calendar-number-outline" color={C.white} size={22} /><Text style={styles.drawerItemText}>Elegir fecha</Text>
+            <Pressable style={gfStyle(styles.drawerItem, gfDark)} onPress={() => { setDrawer(false); setCalendar(true); }}>
+              <Ionicons name="calendar-number-outline" color={gfColor(C.white, gfDark, "text")} size={22} /><Text style={gfStyle(styles.drawerItemText, gfDark)}>Elegir fecha</Text>
             </Pressable>
-            <Pressable style={styles.drawerItem} onPress={() => { setDrawer(false); setAbout(true); }}>
-              <Ionicons name="settings-outline" color={C.white} size={22} /><Text style={styles.drawerItemText}>Configuraci&#243;n</Text>
+            <Pressable style={gfStyle(styles.drawerItem, gfDark)} onPress={() => { setDrawer(false); setAbout(true); }}>
+              <Ionicons name="settings-outline" color={gfColor(C.white, gfDark, "text")} size={22} /><Text style={gfStyle(styles.drawerItemText, gfDark)}>Configuraci&#243;n</Text>
             </Pressable>
           </MotionDrawer>
         </View>

@@ -1,3 +1,5 @@
+// GOLFLASH_GLOBAL_THEME
+import { useGolTheme, gfStyle, gfColor, gfColors } from "../services/globalTheme";
 import React, {
   useEffect,
   useRef,
@@ -41,6 +43,8 @@ function Team({
   name: string;
   logo?: string;
 }) {
+  const gfDark = useGolTheme();
+
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -48,24 +52,24 @@ function Team({
   }, [logo]);
 
   return (
-    <View style={s.team}>
+    <View style={gfStyle(s.team, gfDark)}>
       {logo && /^https:\/\//i.test(logo) && !failed ? (
         <Image
           source={{ uri: logo }}
           resizeMode="contain"
-          style={s.logo}
+          style={gfStyle(s.logo, gfDark)}
           onError={() => setFailed(true)}
         />
       ) : (
         <Ionicons
           name="shield-outline"
-          color="#A8B9AD"
+          color={gfColor("#A8B9AD", gfDark, "text")}
           size={44}
         />
       )}
 
       <Text
-        style={s.teamName}
+        style={gfStyle(s.teamName, gfDark)}
         numberOfLines={2}
       >
         {name}
@@ -75,19 +79,21 @@ function Team({
 }
 
 function Field() {
+  const gfDark = useGolTheme();
+
   return (
     <View
       pointerEvents="none"
-      style={s.fieldBackground}
+      style={gfStyle(s.fieldBackground, gfDark)}
     >
-      <View style={s.lightLeft}/>
-      <View style={s.lightRight}/>
+      <View style={gfStyle(s.lightLeft, gfDark)}/>
+      <View style={gfStyle(s.lightRight, gfDark)}/>
 
-      <View style={s.pitch}>
-        <View style={s.middleLine}/>
-        <View style={s.circle}/>
-        <View style={s.areaLeft}/>
-        <View style={s.areaRight}/>
+      <View style={gfStyle(s.pitch, gfDark)}>
+        <View style={gfStyle(s.middleLine, gfDark)}/>
+        <View style={gfStyle(s.circle, gfDark)}/>
+        <View style={gfStyle(s.areaLeft, gfDark)}/>
+        <View style={gfStyle(s.areaRight, gfDark)}/>
       </View>
     </View>
   );
@@ -103,6 +109,8 @@ export default function LiveCarousel({
   onAll,
   onSelect,
 }: Props) {
+  const gfDark = useGolTheme();
+
 
   const { width: windowWidth } = useWindowDimensions();
 
@@ -157,7 +165,7 @@ export default function LiveCarousel({
 
   return (
     <View
-      style={s.container}
+      style={gfStyle(s.container, gfDark)}
       onLayout={event => {
         const next = Math.round(
           event.nativeEvent.layout.width
@@ -174,16 +182,16 @@ export default function LiveCarousel({
         }
       }}
     >
-      <View style={s.heading}>
-        <View style={s.accent}/>
+      <View style={gfStyle(s.heading, gfDark)}>
+        <View style={gfStyle(s.accent, gfDark)}/>
 
-        <View style={[
+        <View style={gfStyle([
           s.liveDot,
           (!currentDay || stale || !live.length) &&
             s.inactiveDot,
-        ]}/>
+        ], gfDark)}/>
 
-        <Text style={s.headingText}>
+        <Text style={gfStyle(s.headingText, gfDark)}>
           DIRECTO
           {currentDay && !stale && !loading
             ? ` (${live.length})`
@@ -193,15 +201,15 @@ export default function LiveCarousel({
         <Pressable
           onPress={onAll}
           hitSlop={8}
-          style={s.viewAll}
+          style={gfStyle(s.viewAll, gfDark)}
         >
-          <Text style={s.viewAllText}>
+          <Text style={gfStyle(s.viewAllText, gfDark)}>
             Ver todos
           </Text>
 
           <Ionicons
             name="arrow-forward"
-            color={GREEN}
+            color={gfColor(GREEN, gfDark, "text")}
             size={19}
           />
         </Pressable>
@@ -227,7 +235,7 @@ export default function LiveCarousel({
                 )
               );
             }}
-            style={s.carousel}
+            style={gfStyle(s.carousel, gfDark)}
           >
             {featured.map(match => {
               const score =
@@ -239,77 +247,77 @@ export default function LiveCarousel({
               return (
                 <View
                   key={match.id}
-                  style={{ width }}
+                  style={gfStyle({ width }, gfDark)}
                 >
                   <Pressable
                     onPress={() => onSelect(match)}
-                    style={({ pressed }) => [
+                    style={({ pressed }) => gfStyle([
                       s.card,
                       pressed && { opacity: 0.85 },
-                    ]}
+                    ], gfDark)}
                   >
                     <LinearGradient
-                      colors={[
+                      colors={gfColors([
                         '#081715',
                         '#102820',
                         '#1B3D1A',
-                      ]}
+                      ], gfDark, "background")}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 0.9, y: 1 }}
-                      style={s.gradient}
+                      style={gfStyle(s.gradient, gfDark)}
                     >
                       <Field/>
 
-                      <View style={s.cardHeader}>
+                      <View style={gfStyle(s.cardHeader, gfDark)}>
                         <Ionicons
                           name="trophy-outline"
-                          color="#D8E9DC"
+                          color={gfColor("#D8E9DC", gfDark, "text")}
                           size={16}
                         />
 
                         <Text
-                          style={s.league}
+                          style={gfStyle(s.league, gfDark)}
                           numberOfLines={1}
                         >
                           {match.league}
                         </Text>
 
-                        <View style={[
+                        <View style={gfStyle([
                           s.minuteBox,
                           stale && { borderColor: '#999999' },
-                        ]}>
-                          <Text style={[
+                        ], gfDark)}>
+                          <Text style={gfStyle([
                             s.minute,
                             stale && { color: '#BBBBBB' },
-                          ]}>
+                          ], gfDark)}>
                             {match.minute || 'LIVE'}
                           </Text>
                         </View>
                       </View>
 
-                      <View style={s.teamsRow}>
+                      <View style={gfStyle(s.teamsRow, gfDark)}>
                         <Team
                           name={match.home}
                           logo={match.homeLogo}
                         />
 
-                        <View style={s.center}>
-                          <View style={[
+                        <View style={gfStyle(s.center, gfDark)}>
+                          <View style={gfStyle([
                             s.badge,
                             stale && {
                               backgroundColor: '#525252'
                             },
-                          ]}>
-                            <View style={s.whiteDot}/>
+                          ], gfDark)}>
+                            <View style={gfStyle(s.whiteDot, gfDark)}/>
 
-                            <Text style={s.badgeText}>
+                            <Text style={gfStyle(s.badgeText, gfDark)}>
                               {stale
                                 ? 'GUARDADO'
                                 : 'EN VIVO'}
                             </Text>
                           </View>
 
-                          <Text style={s.score}>
+                          <Text style={gfStyle(s.score, gfDark)}>
                             {score}
                           </Text>
                         </View>
@@ -320,22 +328,22 @@ export default function LiveCarousel({
                         />
                       </View>
 
-                      <View style={s.footer}>
-                        <Text style={s.source}>
+                      <View style={gfStyle(s.footer, gfDark)}>
+                        <Text style={gfStyle(s.source, gfDark)}>
                           {match.source}
                           {updated
                             ? ` · ${matchHour(updated)}`
                             : ''}
                         </Text>
 
-                        <View style={s.detail}>
-                          <Text style={s.detailText}>
+                        <View style={gfStyle(s.detail, gfDark)}>
+                          <Text style={gfStyle(s.detailText, gfDark)}>
                             Detalles
                           </Text>
 
                           <Ionicons
                             name="chevron-forward"
-                            color="#B9EBA1"
+                            color={gfColor("#B9EBA1", gfDark, "text")}
                             size={13}
                           />
                         </View>
@@ -347,7 +355,7 @@ export default function LiveCarousel({
             })}
           </ScrollView>
 
-          <View style={s.pagination}>
+          <View style={gfStyle(s.pagination, gfDark)}>
             {featured.map((match, page) => (
               <Pressable
                 key={match.id}
@@ -355,16 +363,16 @@ export default function LiveCarousel({
                 onPress={() => goTo(page)}
                 accessibilityLabel={`Partido ${page + 1}`}
               >
-                <View style={[
+                <View style={gfStyle([
                   s.dot,
                   page === index && s.dotActive,
-                ]}/>
+                ], gfDark)}/>
               </Pressable>
             ))}
           </View>
 
           {stale ? (
-            <Text style={s.notice}>
+            <Text style={gfStyle(s.notice, gfDark)}>
               Ultimos datos guardados.
               Actualizacion no confirmada.
             </Text>
@@ -372,17 +380,17 @@ export default function LiveCarousel({
         </>
       ) : (
         <Pressable
-          style={s.empty}
+          style={gfStyle(s.empty, gfDark)}
           onPress={onAll}
         >
           <Ionicons
             name="radio-outline"
-            color={GREEN}
+            color={gfColor(GREEN, gfDark, "text")}
             size={24}
           />
 
-          <View style={{ flex: 1 }}>
-            <Text style={s.emptyTitle}>
+          <View style={gfStyle({ flex: 1 }, gfDark)}>
+            <Text style={gfStyle(s.emptyTitle, gfDark)}>
               {!currentDay
                 ? 'Consultar partidos de hoy'
                 : loading
@@ -392,7 +400,7 @@ export default function LiveCarousel({
                     : 'No hay partidos en directo'}
             </Text>
 
-            <Text style={s.emptyText}>
+            <Text style={gfStyle(s.emptyText, gfDark)}>
               {!currentDay
                 ? 'Ver los encuentros en directo'
                 : 'Segun las fuentes disponibles'}
@@ -402,7 +410,7 @@ export default function LiveCarousel({
           <Ionicons
             name="chevron-forward"
             size={19}
-            color={GREEN}
+            color={gfColor(GREEN, gfDark, "text")}
           />
         </Pressable>
       )}

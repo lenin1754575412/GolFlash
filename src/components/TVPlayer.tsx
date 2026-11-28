@@ -1,3 +1,5 @@
+// GOLFLASH_GLOBAL_THEME
+import { useGolTheme, gfStyle, gfColor, gfColors } from "../services/globalTheme";
 import React, { useState } from 'react';
 
 import {
@@ -14,21 +16,23 @@ import { Ionicons } from '@expo/vector-icons';
 const WEBSITE = 'https://futbol-libre.com/';
 
 export default function TVPlayer() {
+  const gfDark = useGolTheme();
+
 
   const [opened, setOpened] = useState(false);
   const [reload, setReload] = useState(0);
 
   return (
-    <View style={s.card}>
+    <View style={gfStyle(s.card, gfDark)}>
 
-      <View style={s.header}>
+      <View style={gfStyle(s.header, gfDark)}>
         <Ionicons
           name="tv-outline"
           size={25}
-          color="#8BDD4B"
+          color={gfColor("#8BDD4B", gfDark, "text")}
         />
 
-        <Text style={s.title}>
+        <Text style={gfStyle(s.title, gfDark)}>
           GOLFLASH WEB TV
         </Text>
 
@@ -37,7 +41,7 @@ export default function TVPlayer() {
         >
           <Ionicons
             name="refresh-outline"
-            color="#8BDD4B"
+            color={gfColor("#8BDD4B", gfDark, "text")}
             size={25}
           />
         </Pressable>
@@ -45,7 +49,7 @@ export default function TVPlayer() {
 
       {opened ? (
         <>
-          <View style={s.browser}>
+          <View style={gfStyle(s.browser, gfDark)}>
             <WebView<{}>
               key={reload}
               source={{ uri: WEBSITE }}
@@ -58,34 +62,34 @@ export default function TVPlayer() {
               mixedContentMode="never"
               allowFileAccess={false}
               originWhitelist={['https://*']}
-              style={{ flex: 1 }}
+              style={gfStyle({ flex: 1 }, gfDark)}
               renderLoading={() => (
-                <View style={s.loading}>
+                <View style={gfStyle(s.loading, gfDark)}>
                   <ActivityIndicator
                     size="large"
-                    color="#8BDD4B"
+                    color={gfColor("#8BDD4B", gfDark, "text")}
                   />
-                  <Text style={s.muted}>
+                  <Text style={gfStyle(s.muted, gfDark)}>
                     Cargando página...
                   </Text>
                 </View>
               )}
               renderError={() => (
-                <View style={s.loading}>
+                <View style={gfStyle(s.loading, gfDark)}>
                   <Ionicons
                     name="cloud-offline-outline"
                     size={45}
-                    color="#8BDD4B"
+                    color={gfColor("#8BDD4B", gfDark, "text")}
                   />
 
-                  <Text style={s.white}>
+                  <Text style={gfStyle(s.white, gfDark)}>
                     Página no disponible
                   </Text>
 
                   <Pressable
                     onPress={() => setReload(n => n + 1)}
                   >
-                    <Text style={s.green}>
+                    <Text style={gfStyle(s.green, gfDark)}>
                       Reintentar
                     </Text>
                   </Pressable>
@@ -95,43 +99,43 @@ export default function TVPlayer() {
           </View>
 
           <Pressable
-            style={s.button}
+            style={gfStyle(s.button, gfDark)}
             onPress={() => setOpened(false)}
           >
-            <Text style={s.buttonText}>
+            <Text style={gfStyle(s.buttonText, gfDark)}>
               CERRAR PÁGINA
             </Text>
           </Pressable>
         </>
       ) : (
         <>
-          <View style={s.empty}>
+          <View style={gfStyle(s.empty, gfDark)}>
             <Ionicons
               name="tv-outline"
               size={65}
-              color="#8BDD4B"
+              color={gfColor("#8BDD4B", gfDark, "text")}
             />
 
-            <Text style={s.white}>
+            <Text style={gfStyle(s.white, gfDark)}>
               Centro deportivo
             </Text>
 
-            <Text style={s.muted}>
+            <Text style={gfStyle(s.muted, gfDark)}>
               Navegador integrado de GolFlash
             </Text>
           </View>
 
           <Pressable
-            style={s.button}
+            style={gfStyle(s.button, gfDark)}
             onPress={() => setOpened(true)}
           >
             <Ionicons
               name="play-circle"
               size={25}
-              color="#101810"
+              color={gfColor("#101810", gfDark, "text")}
             />
 
-            <Text style={s.buttonText}>
+            <Text style={gfStyle(s.buttonText, gfDark)}>
               ABRIR PÁGINA
             </Text>
           </Pressable>
