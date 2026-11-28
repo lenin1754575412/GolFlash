@@ -1,3 +1,5 @@
+import ToolsCenter from './ToolsCenter';
+import LegalLinks from './LegalLinks';
 import React, { useEffect, useState } from 'react';
 import {
   Modal,
@@ -413,7 +415,11 @@ export default function SettingsScreen({
               ).catch(() => Alert.alert('GolFlash', 'Error'))
             )}
           </View>
-        </ScrollView>
+        
+<LegalLinks dark={dark} />
+
+<ToolsCenter dark={dark} />
+</ScrollView>
 
         <Modal
           visible={selector !== null}

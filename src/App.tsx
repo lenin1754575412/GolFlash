@@ -1,3 +1,5 @@
+import GoalAlerts from './components/GoalAlerts';
+import LiveCarousel from './components/LiveCarousel';
 import LiveTV from './components/LiveTV';
 import SportsHub from './components/SportsHub';
 import SettingsScreen from './components/SettingsScreen';
@@ -313,8 +315,13 @@ export default function App() {
         </Pressable>
       </View>
 
-      {!selected ? <SportsHub /> : null}
-      {!selected ? <LiveTV /> : null}
+      
+      <GoalAlerts
+        matches={matches}
+        currentDay={matchDate === dayFromOffset(0)}
+        cached={cached || !!error}
+        updated={lastUpdated}
+      />
       <Modal visible={teamRoster !== null} animationType="slide" onRequestClose={() => setTeamRoster(null)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
           <Pressable onPress={() => setTeamRoster(null)} style={{ padding: 20, flexDirection: 'row', alignItems: 'center', gap: 12 }}><Ionicons name="arrow-back" size={25} color={C.white}/><Text style={{ color: C.white, fontSize: 20 }}>{teamRoster?.name || 'Jugadores'}</Text></Pressable>
@@ -372,8 +379,57 @@ export default function App() {
           </View>
         </ScrollView>
       ) : (
-        <>
-          {isMatchSection && section !== 'Favorito' ? (
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingBottom: 20,
+          }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled={true}
+          refreshControl={
+            <RefreshControl
+              refreshing={
+                isMatchSection ? loading : newsLoading
+              }
+              onRefresh={
+                isMatchSection ? refreshMatches : refreshNews
+              }
+              tintColor={C.green}
+              colors={[C.green]}
+            />
+          }
+        >
+          {/* GOLFLASH_UNIFIED_SCROLL */}
+          {(section === 'Partidos' ||
+            section === 'Explorar') ? (
+            <>
+              {!selected ? <SportsHub /> : null}
+      {!selected &&
+        (section === 'Partidos' || section === 'Explorar') ? (
+        <LiveCarousel
+          matches={matches}
+          today={todayKey}
+          currentDay={matchDate === todayKey}
+          loading={loading}
+          stale={cached || !!error}
+          updated={lastUpdated}
+          onAll={() => {
+            navigate('Partidos');
+            setLeague('TODAS');
+            chooseDay('DIRECTO');
+            if (matchDate === todayKey) {
+              refreshMatches();
+            }
+          }}
+          onSelect={match => setSelected(match)}
+        />
+      ) : null}
+      {!selected ? <LiveTV /> : null}
+            </>
+          ) : null}
+{isMatchSection && section !== 'Favorito' ? (
             <View style={styles.daysRow}>
               {(['AYER', 'HOY', 'DIRECTO', 'MAÑANA'] as const).map(tab => (
                 <Pressable key={tab} onPress={() => chooseDay(tab)} style={styles.dayItem}>
@@ -412,9 +468,7 @@ export default function App() {
           ) : null}
 
           {isMatchSection ? (
-            <ScrollView
-              style={styles.flex} contentContainerStyle={styles.listContent}
-              refreshControl={<RefreshControl refreshing={loading} onRefresh={refreshMatches} tintColor={C.green} colors={[C.green]} />}>
+            <View style={styles.listContent}>
               <View style={styles.headingRow}>
                 <View style={styles.flex}>
                   <Text style={styles.listTitle}>{section === 'Favorito' ? 'Partidos guardados' : direct ? 'Partidos en directo' : `Partidos · ${visibleDay}`}</Text>
@@ -442,7 +496,7 @@ export default function App() {
                   </View>
                   <View style={styles.matchBody}>
                     <View style={styles.matchTeam}>
-                      <Logo url={match.homeLogo} size={34} />
+                      <Logo url={match.homeLogo} size={40} />
                       <Text numberOfLines={2} style={styles.matchTeamName}>{match.home}</Text>
                     </View>
                     <View style={styles.scoreCenter}>
@@ -450,7 +504,7 @@ export default function App() {
                       {isLive(match) ? <LivePulse style={styles.liveText} /> : null}
                     </View>
                     <View style={styles.matchTeam}>
-                      <Logo url={match.awayLogo} size={34} />
+                      <Logo url={match.awayLogo} size={40} />
                       <Text numberOfLines={2} style={styles.matchTeamName}>{match.away}</Text>
                     </View>
                   </View>
@@ -462,11 +516,9 @@ export default function App() {
                   </View>
                 </Pressable></MotionView>))}
               {lastUpdated && section !== 'Favorito' ? <Text style={styles.refreshFoot}>Actualizado: {matchDayText(lastUpdated)} {matchHour(lastUpdated)} · Arrastra hacia abajo para actualizar.</Text> : null}
-            </ScrollView>
+            </View>
           ) : (
-            <ScrollView
-              style={styles.flex} contentContainerStyle={styles.listContent}
-              refreshControl={<RefreshControl refreshing={newsLoading} onRefresh={refreshNews} tintColor={C.green} colors={[C.green]} />}>
+            <View style={styles.listContent}>
               <Text style={styles.sectionIntroduction}>{section === 'Fichaje' ? 'Noticias y rumores de transferencias publicados por las fuentes. Un rumor no confirma un fichaje.' : 'Actualidad del fútbol internacional desde fuentes deportivas.'}</Text>
               {newsLoading && articles.length === 0 ? <ActivityIndicator color={C.green} style={{ marginVertical: 30 }} size="large" /> : null}
               {newsError ? <View style={styles.warningBox}><Ionicons name="wifi-outline" color={C.subtle} size={19} /><Text style={styles.warningText}>{newsError}</Text></View> : null}
@@ -494,11 +546,10 @@ export default function App() {
                     </View>
                   </View>
                 </Pressable></MotionView>))}
-            </ScrollView>
+            </View>
           )}
-        </>
+        </ScrollView>
       )}
-
       <View style={styles.bottomBar}>
         {NAV.map(item => (
           <Pressable key={item.label} style={styles.bottomItem} onPress={() => navigate(item.label)} accessibilityLabel={`Ir a ${item.label}`}>
@@ -578,16 +629,16 @@ export default function App() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
   flex: { flex: 1 },
-  header: { height: 95, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center' },
+  header: { height: 68, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center' },
   headerButton: { width: 44, height: 48, alignItems: 'center', justifyContent: 'center' },
   brand: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 9, paddingLeft: 1 },
   brandName: { fontSize: 22, color: C.white, fontWeight: '400', letterSpacing: .8 },
-  daysRow: { height: 72, flexDirection: 'row', marginBottom: 15, paddingHorizontal: 8 },
+  daysRow: { height: 48, flexDirection: 'row', marginBottom: 15, paddingHorizontal: 8 },
   dayItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   dayLabel: { color: C.subtle, fontSize: 13.5, fontWeight: '500' },
   activeDayLabel: { color: C.white },
   dayIndicator: { backgroundColor: C.green, height: 4, position: 'absolute', left: '15%', right: '15%', bottom: 0 },
-  searchBox: { marginHorizontal: 14, height: 62, paddingHorizontal: 17, borderRadius: 11, backgroundColor: C.surface, flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: 12 },
+  searchBox: { marginHorizontal: 14, height: 48, paddingHorizontal: 17, borderRadius: 11, backgroundColor: C.surface, flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: 12 },
   searchField: { flex: 1, color: C.white, height: '100%', fontSize: 15 },
   leaguesScroll: { flexGrow: 0, maxHeight: 54, marginBottom: 10 },
   leaguesContent: { paddingHorizontal: 13, gap: 8, paddingBottom: 8, alignItems: 'center' },
@@ -602,15 +653,41 @@ const styles = StyleSheet.create({
   listTitle: { color: C.white, fontWeight: '700', fontSize: 18 },
   sourceText: { color: C.subtle, marginTop: 4, fontSize: 11 },
   refreshButton: { padding: 10 },
-  matchCard: { backgroundColor: C.card, borderRadius: 13, paddingHorizontal: 15, paddingTop: 14, paddingBottom: 8, marginBottom: 10, borderWidth: 1, borderColor: '#3C3C3C' },
+  matchCard: {
+    backgroundColor: '#292D29',
+    borderRadius: 17,
+    paddingHorizontal: 14,
+    paddingTop: 13,
+    paddingBottom: 7,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#3B443B',
+  },
   matchMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 7 },
   matchLeague: { color: C.subtle, fontSize: 12, flex: 1 },
   matchMetaStatus: { color: C.subtle, fontSize: 12, fontWeight: '600' },
   matchBody: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, marginBottom: 11 },
-  matchTeam: { width: '37%', alignItems: 'center', gap: 7 },
-  matchTeamName: { color: C.white, textAlign: 'center', fontSize: 12.5, lineHeight: 17, fontWeight: '600' },
+  matchTeam: {
+    width: '34%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    minHeight: 78,
+  },
+  matchTeamName: {
+    color: C.white,
+    textAlign: 'center',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
   scoreCenter: { flex: 1, alignItems: 'center' },
-  scoreText: { color: C.white, fontSize: 20, fontWeight: '800', textAlign: 'center' },
+  scoreText: {
+    color: C.white,
+    fontSize: 25,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
   liveText: { color: C.red, fontWeight: '700', fontSize: 10, marginTop: 4 },
   emptyLogo: { justifyContent: 'center', alignItems: 'center' },
   matchFooter: { borderTopWidth: 1, borderTopColor: C.line, minHeight: 38, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -625,7 +702,7 @@ const styles = StyleSheet.create({
   greenOutline: { marginTop: 5, borderWidth: 1, borderColor: C.green, borderRadius: 9, paddingVertical: 10, paddingHorizontal: 19 },
   greenText: { color: C.green, fontSize: 13.5, fontWeight: '600' },
   refreshFoot: { color: C.subtle, fontSize: 10.5, textAlign: 'center', marginTop: 16, marginBottom: 12 },
-  bottomBar: { height: 79, flexDirection: 'row', borderTopWidth: 1, borderColor: C.line, backgroundColor: C.bg },
+  bottomBar: { height: 65, flexDirection: 'row', borderTopWidth: 1, borderColor: C.line, backgroundColor: C.bg },
   bottomItem: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 7 },
   bottomText: { color: C.subtle, fontSize: 11.5 },
   bottomSelected: { color: C.green },
